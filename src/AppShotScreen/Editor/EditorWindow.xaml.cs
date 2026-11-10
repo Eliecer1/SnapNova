@@ -72,7 +72,10 @@ public partial class EditorWindow : Window
         double dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
         double actual = 1.0 / dpi;
         double fit = FitFactor();
-        Zoom.Value = Math.Min(actual, fit);
+        // Capturas muy altas (con desplazamiento): ajustamos al ancho y se recorren con la rueda.
+        if (_base.PixelHeight > _base.PixelWidth * 2.5)
+            fit = Math.Max(100, Scroller.ActualWidth - 60) / _base.PixelWidth;
+        Zoom.Value = Math.Clamp(Math.Min(actual, fit), Zoom.Minimum, Zoom.Maximum);
     }
 
     private double FitFactor()

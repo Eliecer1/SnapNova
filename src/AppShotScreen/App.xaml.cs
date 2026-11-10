@@ -15,6 +15,8 @@ public partial class App : Application
     private const uint VK_SNAPSHOT = 0x2C; // Impr Pant
     private const uint VK_S = 0x53;
     private const uint VK_F = 0x46;
+    private const uint VK_D = 0x44;
+    private const uint VK_ESCAPE = 0x1B;
 
     private Mutex? _singleInstance;
     private Forms.NotifyIcon? _tray;
@@ -68,6 +70,7 @@ public partial class App : Application
         if (_hotkeys.Register(0, VK_SNAPSHOT, () => _ = CaptureRegionAsync())) ok.Add("Impr Pant = región");
         if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_S, () => _ = CaptureRegionAsync())) ok.Add("Ctrl+Shift+S = región");
         if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_F, () => _ = CaptureFullScreenAsync())) ok.Add("Ctrl+Shift+F = pantalla completa");
+        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_D, () => _ = CaptureScrollingAsync())) ok.Add("Ctrl+Shift+D = con desplazamiento");
         return ok.Count > 0
             ? string.Join("\n", ok)
             : "No se pudieron registrar atajos (otra app los usa). Usa el icono de la bandeja.";
@@ -78,6 +81,7 @@ public partial class App : Application
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Capturar región", null, (_, _) => _ = CaptureRegionAsync());
         menu.Items.Add("Capturar pantalla completa", null, (_, _) => _ = CaptureFullScreenAsync());
+        menu.Items.Add("Captura con desplazamiento", null, (_, _) => _ = CaptureScrollingAsync());
         menu.Items.Add("Capturar región en 3 s", null, (_, _) => _ = CaptureRegionAsync(TimeSpan.FromSeconds(3)));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Abrir imagen en el editor…", null, (_, _) => PickAndOpenImage());
@@ -113,6 +117,37 @@ public partial class App : Application
         }
         finally
         {
+            _capturing = false;
+        }
+    }
+
+    private async Task CaptureScrollingAsync()
+    {
+        if (_capturing) return;
+        _capturing = true;
+        int escId = 0;
+        try
+        {
+            await Task.Delay(150);
+            var bounds = ScreenCapture.VirtualScreen;
+            var overlay = new OverlayWindow(ScreenCapture.Capture(bounds), bounds)
+            {
+                HintText = "Captura con desplazamiento: selecciona la zona que se desplaza  ·  Esc = cancelar",
+            };
+            overlay.ShowDialog();
+            if (overlay.SelectedScreenRect is not { } region) return;
+
+            using var cts = new CancellationTokenSource();
+            escId = _hotkeys!.RegisterTemporary(0, VK_ESCAPE, () => cts.Cancel());
+            _tray?.ShowBalloonTip(2500, "Capturando con desplazamiento…", "No muevas el ratón. Pulsa Esc para terminar antes.", Forms.ToolTipIcon.Info);
+            await Task.Delay(300); // deja que la ventana de selección desaparezca por completo
+
+            var result = await ScrollingCapture.CaptureAsync(region, cts.Token);
+            HandleCapture(result);
+        }
+        finally
+        {
+            _hotkeys?.Unregister(escId);
             _capturing = false;
         }
     }

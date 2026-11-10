@@ -9,6 +9,7 @@ capturar → anotar → copiar/guardar.
 2. Captura:
    - **Impr Pant** o **Ctrl+Shift+S**: seleccionar región (arrastra; Enter = todo; Esc = cancelar)
    - **Ctrl+Shift+F**: pantalla completa del monitor actual
+   - **Ctrl+Shift+D**: captura con desplazamiento. Selecciona la zona que se desplaza (por ejemplo, el contenido de una página web); la app gira la rueda sola y une todo. Esc termina antes. No muevas el ratón mientras tanto.
    - Clic en el icono de la bandeja: región. Clic derecho: menú (retardo 3 s, abrir imagen, carpeta, salir)
 3. La captura se copia sola al portapapeles y se abre el editor.
 
@@ -59,6 +60,6 @@ dotnet publish src/AppShotScreen -c Release -r win-x64 --self-contained false -p
 
 ### Siguientes pasos
 
-Captura de ventana con resaltado al pasar el ratón, captura con desplazamiento (OpenCvSharp),
+Captura de ventana con resaltado al pasar el ratón, desplazamiento horizontal,
 presets guardados (modo + selección + atajo + efectos + destino), grabación de vídeo/GIF,
 más efectos (bordes rasgados, perspectiva, lupa) y temas de estilos por herramienta.

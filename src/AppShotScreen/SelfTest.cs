@@ -80,6 +80,8 @@ internal static class SelfTest
             catch (Exception ex) { Fail("OCR: " + ex.Message); }
 
             editor.Close();
+
+            await SelfTestScroll.RunAsync(outDir, Ok, Fail);
         }
         catch (Exception ex)
         {

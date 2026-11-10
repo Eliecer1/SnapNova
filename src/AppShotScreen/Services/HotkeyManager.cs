@@ -26,6 +26,21 @@ public sealed class HotkeyManager : IDisposable
         return true;
     }
 
+    /// <summary>Registra un atajo temporal; devuelve su id (0 si falló) para quitarlo con <see cref="Unregister"/>.</summary>
+    public int RegisterTemporary(uint modifiers, uint virtualKey, Action action)
+    {
+        int id = _nextId++;
+        if (!Native.RegisterHotKey(_source.Handle, id, modifiers | Native.MOD_NOREPEAT, virtualKey)) return 0;
+        _actions[id] = action;
+        return id;
+    }
+
+    public void Unregister(int id)
+    {
+        if (id == 0 || !_actions.Remove(id)) return;
+        Native.UnregisterHotKey(_source.Handle, id);
+    }
+
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         if (msg == Native.WM_HOTKEY && _actions.TryGetValue(wParam.ToInt32(), out var action))

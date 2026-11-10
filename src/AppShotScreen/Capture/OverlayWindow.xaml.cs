@@ -19,6 +19,11 @@ public partial class OverlayWindow : Window
 
     public BitmapSource? Result { get; private set; }
 
+    /// <summary>Región elegida en coordenadas de pantalla (píxeles físicos).</summary>
+    public PixelRect? SelectedScreenRect { get; private set; }
+
+    public string HintText { set => HintLabel.Text = value; }
+
     public OverlayWindow(BitmapSource frozenScreen, PixelRect bounds)
     {
         InitializeComponent();
@@ -53,6 +58,7 @@ public partial class OverlayWindow : Window
         else if (e.Key == Key.Enter)
         {
             Result = _frozen;
+            SelectedScreenRect = _bounds;
             Close();
         }
     }
@@ -93,6 +99,7 @@ public partial class OverlayWindow : Window
         if (px.Width >= 3 && px.Height >= 3)
         {
             Result = ScreenCapture.Crop(_frozen, px);
+            SelectedScreenRect = new PixelRect(_bounds.X + px.X, _bounds.Y + px.Y, px.Width, px.Height);
             Close();
         }
         else
