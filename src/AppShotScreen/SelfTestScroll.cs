@@ -14,7 +14,9 @@ internal static class SelfTestScroll
     public static async Task RunAsync(string outDir, Action<string> ok, Action<string> fail)
     {
         SyntheticStitch(ok, fail);
-        await RealWindowAsync(outDir, ok, fail);
+        await RealWindowAsync(outDir, ok, fail, manual: false);
+        await RealWindowAsync(outDir, ok, fail, manual: true);
+        await RealWindowAsync(outDir, ok, fail, manual: true, panelAuto: true);
     }
 
     /// <summary>Imagen alta conocida → fotogramas recortados con encabezado fijo → se debe reconstruir exacta.</summary>
@@ -71,7 +73,7 @@ internal static class SelfTestScroll
     }
 
     /// <summary>Abre una ventana real con una lista larga y la captura girando la rueda del ratón.</summary>
-    private static async Task RealWindowAsync(string outDir, Action<string> ok, Action<string> fail)
+    private static async Task RealWindowAsync(string outDir, Action<string> ok, Action<string> fail, bool manual, bool panelAuto = false)
     {
         const int lines = 120, lineH = 30, headerH = 44;
         var list = new StackPanel();
@@ -110,15 +112,52 @@ internal static class SelfTestScroll
         var region = new PixelRect((int)topLeft.X, (int)topLeft.Y, (int)(bottomRight.X - topLeft.X), (int)(bottomRight.Y - topLeft.Y));
         double scale = region.Height / dock.ActualHeight;
 
-        var result = await ScrollingCapture.CaptureAsync(region, CancellationToken.None);
+        BitmapSource result;
+        string name = panelAuto ? "boton-auto" : manual ? "manual" : "auto";
+        if (!manual)
+        {
+            result = await ScrollingCapture.CaptureAsync(region, CancellationToken.None);
+        }
+        else
+        {
+            // Simula a una persona: gira la rueda a ritmos distintos, sube un poco a mitad y sigue bajando.
+            var session = new ScrollSession(region);
+            var frameWin = new RegionFrameWindow(region);
+            var panel = new ScrollPanelWindow(region);
+            session.HeightChanged += panel.SetHeight;
+            frameWin.Show();
+            panel.Show();
+            var run = session.RunAsync();
+            if (panelAuto)
+            {
+                var end = new TaskCompletionSource();
+                session.AutoReachedEnd += () => end.TrySetResult();
+                session.SetAuto(true);
+                await Task.WhenAny(end.Task, Task.Delay(30000));
+                session.Stop();
+            }
+            ScrollingCapture.MoveCursorToCenter(region);
+            var rnd = new Random(3);
+            int[] deltas = { -120, -240, -120, -360, -120, 240, 120, -240, -360, -120, -240 };
+            for (int i = 0; i < (panelAuto ? 0 : 140); i++)
+            {
+                ScrollingCapture.Wheel(deltas[i % deltas.Length]);
+                await Task.Delay(rnd.Next(90, 260));
+            }
+            await Task.Delay(500);
+            session.Stop();
+            result = await run;
+            frameWin.Close();
+            panel.Close();
+        }
         win.Close();
-        Exporter.Save(result, Path.Combine(outDir, "4_desplazamiento.png"));
+        Exporter.Save(result, Path.Combine(outDir, $"4_desplazamiento_{name}.png"));
 
         double expected = (headerH + lines * lineH) * scale;
         double ratio = result.PixelHeight / expected;
         if (Math.Abs(ratio - 1) <= 0.02)
-            ok($"ventana real: {result.PixelWidth}x{result.PixelHeight} px (esperado ≈{expected:0}), toda la lista capturada");
+            ok($"ventana real ({name}): {result.PixelWidth}x{result.PixelHeight} px (esperado ≈{expected:0}), toda la lista capturada");
         else
-            fail($"ventana real: alto {result.PixelHeight} px, esperado ≈{expected:0} (ver 4_desplazamiento.png)");
+            fail($"ventana real ({name}): alto {result.PixelHeight} px, esperado ≈{expected:0} (ver 4_desplazamiento_{name}.png)");
     }
 }

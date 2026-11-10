@@ -9,7 +9,7 @@ capturar → anotar → copiar/guardar.
 2. Captura:
    - **Impr Pant** o **Ctrl+Shift+S**: seleccionar región (arrastra; Enter = todo; Esc = cancelar)
    - **Ctrl+Shift+F**: pantalla completa del monitor actual
-   - **Ctrl+Shift+D**: captura con desplazamiento. Selecciona la zona que se desplaza (por ejemplo, el contenido de una página web); la app gira la rueda sola y une todo. Esc termina antes. No muevas el ratón mientras tanto.
+   - **Ctrl+Shift+D**: captura con desplazamiento (como Snagit). Selecciona la zona; aparece un marco rojo y un panel flotante. Desplaza tú con la rueda del ratón (puedes subir y bajar) y pulsa **Detener y guardar** (o Esc). **Auto** desplaza solo hasta el final; **Cancelar** descarta.
    - Clic en el icono de la bandeja: región. Clic derecho: menú (retardo 3 s, abrir imagen, carpeta, salir)
 3. La captura se copia sola al portapapeles y se abre el editor.
 

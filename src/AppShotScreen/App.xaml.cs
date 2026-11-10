@@ -126,27 +126,51 @@ public partial class App : Application
         if (_capturing) return;
         _capturing = true;
         int escId = 0;
+        RegionFrameWindow? frame = null;
+        ScrollPanelWindow? panel = null;
         try
         {
             await Task.Delay(150);
             var bounds = ScreenCapture.VirtualScreen;
             var overlay = new OverlayWindow(ScreenCapture.Capture(bounds), bounds)
             {
-                HintText = "Captura con desplazamiento: selecciona la zona que se desplaza  ·  Esc = cancelar",
+                HintText = "Captura con desplazamiento: selecciona la zona que vas a desplazar  ·  Esc = cancelar",
             };
             overlay.ShowDialog();
             if (overlay.SelectedScreenRect is not { } region) return;
+            await Task.Delay(250); // deja que la ventana de selección desaparezca por completo
 
-            using var cts = new CancellationTokenSource();
-            escId = _hotkeys!.RegisterTemporary(0, VK_ESCAPE, () => cts.Cancel());
-            _tray?.ShowBalloonTip(2500, "Capturando con desplazamiento…", "No muevas el ratón. Pulsa Esc para terminar antes.", Forms.ToolTipIcon.Info);
-            await Task.Delay(300); // deja que la ventana de selección desaparezca por completo
+            // Como Snagit: el usuario desplaza con la rueda y detiene con el botón (o Esc).
+            var session = new ScrollSession(region);
+            frame = new RegionFrameWindow(region);
+            panel = new ScrollPanelWindow(region);
+            bool cancelled = false;
+            var finishing = panel; // para capturar en los manejadores
 
-            var result = await ScrollingCapture.CaptureAsync(region, cts.Token);
-            HandleCapture(result);
+            session.HeightChanged += h => finishing.SetHeight(h);
+            session.AutoReachedEnd += () =>
+            {
+                finishing.SetAutoVisual(false);
+                finishing.SetMessage("Llegó al final  ·  pulsa Detener y guardar");
+            };
+            panel.StopRequested += session.Stop;
+            panel.CancelRequested += () => { cancelled = true; session.Stop(); };
+            panel.AutoToggled += session.SetAuto;
+            escId = _hotkeys!.RegisterTemporary(0, VK_ESCAPE, session.Stop);
+
+            frame.Show();
+            panel.Show();
+            var result = await session.RunAsync();
+            frame.Close();
+            panel.Close();
+            frame = null;
+            panel = null;
+            if (!cancelled) HandleCapture(result);
         }
         finally
         {
+            frame?.Close();
+            panel?.Close();
             _hotkeys?.Unregister(escId);
             _capturing = false;
         }

@@ -108,7 +108,9 @@ public static class ScrollingCapture
 
     private static POINT GetCursor() { GetCursorPos(out var p); return p; }
 
-    private static void Wheel(int delta)
+    public static void MoveCursorToCenter(PixelRect r) => SetCursorPos(r.X + r.Width / 2, r.Y + r.Height / 2);
+
+    public static void Wheel(int delta)
     {
         var input = new INPUT { type = INPUT_MOUSE, mi = new MOUSEINPUT { mouseData = delta, dwFlags = MOUSEEVENTF_WHEEL } };
         SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
