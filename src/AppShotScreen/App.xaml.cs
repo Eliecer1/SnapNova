@@ -37,6 +37,28 @@ public partial class App : Application
             return;
         }
 
+        int stIdx = Array.IndexOf(e.Args, "--scrolltest");
+        if (stIdx >= 0)
+        {
+            // Diagnóstico: --scrolltest x y w h salida.png  (simula la rueda sobre esa zona)
+            var a = e.Args.Skip(stIdx + 1).ToArray();
+            var region = new PixelRect(int.Parse(a[0]), int.Parse(a[1]), int.Parse(a[2]), int.Parse(a[3]));
+            Dispatcher.InvokeAsync(async () =>
+            {
+                var session = new ScrollSession(region);
+                var run = session.RunAsync();
+                ScrollingCapture.MoveCursorToCenter(region);
+                for (int i = 0; i < 70; i++) { ScrollingCapture.Wheel(-120); await Task.Delay(160); }
+                await Task.Delay(600);
+                session.Stop();
+                var img = await run;
+                Exporter.Save(img, a[4]);
+                File.WriteAllText(a[4] + ".txt", $"alto={img.PixelHeight} unidos={session.Appended} sinCoincidencia={session.NoMatches} quietos={session.Stills}");
+                Shutdown();
+            });
+            return;
+        }
+
         _singleInstance = new Mutex(true, "APPSHOTACREEN_single_instance", out bool isFirst);
         if (!isFirst)
         {

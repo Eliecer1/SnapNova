@@ -5,128 +5,159 @@ namespace AppShotScreen.Capture;
 
 /// <summary>
 /// Une fotogramas sucesivos de una zona que se va desplazando hacia abajo.
-/// Compara las filas de píxeles (por hash) para encontrar cuánto se movió el contenido,
-/// y detecta encabezados y pies fijos (barras que no se mueven) para no repetirlos.
+/// Cada fila de píxeles se resume en una "firma" (promedios de gris por tramos), y se busca
+/// el desplazamiento en el que las firmas coinciden. La comparación es tolerante: los navegadores
+/// no siempre desplazan píxel exacto (suavizado, zoom, efectos al pasar el ratón), así que basta
+/// con que la gran mayoría de filas se parezcan. También detecta encabezados y pies fijos.
 /// </summary>
 public sealed class ScrollStitcher
 {
-    private readonly int _width;
-    private readonly int _height;
-    private readonly int _stride;
-    private readonly int _hashBytes;
+    // Umbrales en escala de gris 0–255 (promedio por tramo)
+    private const float SameRow = 1.5f;      // misma fila (para detectar zonas fijas / sin movimiento)
+    private const double AcceptCost = 2.5;   // distancia media máxima para aceptar un desplazamiento
+
+    private readonly int _width, _height, _stride, _bins, _binPx;
     private readonly List<byte[]> _bodyRows = new();
     private byte[][] _headerRows = Array.Empty<byte[]>();
-    private byte[][] _lastRows;
-    private ulong[] _lastHashes;
-    private bool[] _lastUniform;
+    private Frame _last;
     private int _header = -1, _footer = -1;
 
+    private sealed record Frame(byte[][] Rows, float[][] Sig, float[] Mean, bool[] Informative);
+
     public int LastShift { get; private set; }
-    public int StitchedHeight => _headerRows.Length + _bodyRows.Count + Math.Max(0, _footer);
+    public int StitchedHeight => _header < 0 ? _height : _headerRows.Length + _bodyRows.Count + Math.Max(0, _footer);
 
     public ScrollStitcher(BitmapSource first)
     {
         _width = first.PixelWidth;
         _height = first.PixelHeight;
         _stride = _width * 4;
-        // La barra de desplazamiento de la derecha cambia en cada paso (el "pulgar" se mueve),
-        // así que la ignoramos al comparar filas. Se conserva en la imagen final.
+        // La barra de desplazamiento de la derecha cambia en cada paso: no la usamos para comparar.
         int ignoreRight = _width > 120 ? Math.Max(24, _width / 40) : 0;
-        _hashBytes = (_width - ignoreRight) * 4;
-        (_lastRows, _lastHashes, _lastUniform) = Split(first);
+        int usable = Math.Max(8, _width - ignoreRight);
+        _bins = Math.Clamp(usable / 4, 16, 256);
+        _binPx = Math.Max(1, usable / _bins);
+        _last = Analyze(first);
     }
 
     public enum AddResult { Appended, NoMovement, NoMatch }
 
     /// <param name="expectedShift">Desplazamiento esperado en píxeles (0 = desconocido), para desempatar contenido repetitivo.</param>
-    public AddResult Add(BitmapSource frame, int expectedShift = 0)
+    public AddResult Add(BitmapSource bitmap, int expectedShift = 0)
     {
-        var (rows, hashes, uniform) = Split(frame);
+        var cur = Analyze(bitmap);
 
-        // Filas fijas arriba y abajo (iguales en la misma posición).
+        // ¿Cambió algo? Contamos filas iguales en la misma posición.
+        // Se mira sobre las filas con contenido: si casi todas siguen en su sitio, no hubo desplazamiento
+        // (solo un cambio local, como el resaltado al pasar el ratón o una animación pequeña).
+        int same = 0, informativeRows = 0;
+        for (int y = 0; y < _height; y++)
+        {
+            bool isSame = Dist(cur.Sig[y], _last.Sig[y]) < SameRow;
+            if (cur.Informative[y] || _last.Informative[y])
+            {
+                informativeRows++;
+                if (isSame) same++;
+            }
+        }
+        if (informativeRows == 0 || same >= informativeRows * 0.85) return AddResult.NoMovement;
+
+        // Filas fijas arriba y abajo.
         int top = 0;
-        while (top < _height && hashes[top] == _lastHashes[top]) top++;
-        if (top == _height) return AddResult.NoMovement;
+        while (top < _height && Dist(cur.Sig[top], _last.Sig[top]) < SameRow) top++;
         int bottom = 0;
-        while (bottom < _height - top && hashes[_height - 1 - bottom] == _lastHashes[_height - 1 - bottom]) bottom++;
+        while (bottom < _height - top && Dist(cur.Sig[_height - 1 - bottom], _last.Sig[_height - 1 - bottom]) < SameRow) bottom++;
 
-        // Las primeras dos comparaciones fijan el encabezado/pie; luego solo pueden encogerse.
         int header = _header < 0 ? top : Math.Min(_header, top);
         int footer = _footer < 0 ? bottom : Math.Min(_footer, bottom);
-        // Evitamos que un encabezado "falso" (zona en blanco) se coma casi todo.
         if (header + footer > _height * 0.6) { header = Math.Min(header, _height / 4); footer = Math.Min(footer, _height / 4); }
 
         int n = _height - header - footer;
-        int shift = FindShift(_lastHashes, _lastUniform, hashes, uniform, header, n, expectedShift);
+        if (n < 24) return AddResult.NoMatch;
+        int shift = FindShift(_last, cur, header, n, expectedShift);
         if (shift <= 0) return AddResult.NoMatch;
 
         if (_header < 0)
         {
-            // Primer emparejamiento: guardamos encabezado y el cuerpo completo del primer fotograma.
-            _headerRows = _lastRows.Take(header).ToArray();
-            for (int i = header; i < header + n; i++) _bodyRows.Add(_lastRows[i]);
+            _headerRows = _last.Rows.Take(header).ToArray();
+            for (int i = header; i < header + n; i++) _bodyRows.Add(_last.Rows[i]);
         }
         _header = header;
         _footer = footer;
 
-        // Agregamos las filas nuevas que aparecieron abajo del cuerpo.
-        for (int i = header + n - shift; i < header + n; i++) _bodyRows.Add(rows[i]);
+        for (int i = header + n - shift; i < header + n; i++) _bodyRows.Add(cur.Rows[i]);
 
-        _lastRows = rows;
-        _lastHashes = hashes;
-        _lastUniform = uniform;
+        _last = cur;
         LastShift = shift;
         return AddResult.Appended;
     }
 
-    /// <summary>Busca d tal que las filas del cuerpo actual [0..n-d) coinciden con las anteriores [d..n).</summary>
-    internal static int FindShift(ulong[] prev, bool[] prevUniform, ulong[] cur, bool[] curUniform, int offset, int n, int expected)
+    /// <summary>Busca d tal que las filas actuales [0..n-d) coinciden con las anteriores [d..n).</summary>
+    private int FindShift(Frame prev, Frame cur, int offset, int n, int expected)
     {
-        int bestD = -1;
-        double bestScore = 0;
-        double bestDistance = double.MaxValue;
-        int minOverlap = Math.Max(12, n / 10);
+        int minOverlap = Math.Max(16, n / 8);
+        int maxD = n - minOverlap;
 
-        for (int d = 1; d <= n - minOverlap; d++)
+        // Comparamos cur[i] con prev[i + d]. d > 0: el contenido subió (el usuario bajó).
+        // También probamos d <= 0 (el usuario subió o no se movió) para no confundirlo con un avance.
+
+        // 1) Barrido rápido con el brillo medio de cada fila para elegir candidatos.
+        var costs = new List<(int d, double cost)>(2 * maxD + 1);
+        for (int d = -maxD; d <= maxD; d++)
         {
-            int overlap = n - d;
-            int informative = 0, matches = 0, mismatches = 0;
-            int allowedMismatches = Math.Max(1, overlap / 50);
-            for (int i = 0; i < overlap; i++)
+            int from = Math.Max(0, -d), to = Math.Min(n, n - d);
+            int overlap = to - from;
+            int step = overlap > 400 ? 2 : 1;
+            double sum = 0;
+            int count = 0;
+            for (int i = from; i < to; i += step)
             {
-                ulong a = cur[offset + i], b = prev[offset + i + d];
-                bool informativeRow = !(curUniform[offset + i] && prevUniform[offset + i + d]);
-                if (a == b)
-                {
-                    if (informativeRow) { informative++; matches++; }
-                }
-                else
-                {
-                    informative++;
-                    if (++mismatches > allowedMismatches) break;
-                }
+                sum += Math.Abs(cur.Mean[offset + i] - prev.Mean[offset + i + d]);
+                count++;
             }
-            if (mismatches > allowedMismatches || informative < 6) continue;
+            costs.Add((d, sum / Math.Max(1, count)));
+        }
+        var candidates = costs.OrderBy(c => c.cost).Take(24).Select(c => c.d).ToList();
+        if (expected > 0 && expected <= maxD) candidates.Add(expected);
 
-            double score = (double)matches / informative;
-            double distance = expected > 0 ? Math.Abs(d - expected) : d;
-            // Mejor puntuación; ante empate, el más cercano a lo esperado (o el menor desplazamiento).
-            if (score > bestScore + 0.005 || (Math.Abs(score - bestScore) <= 0.005 && distance < bestDistance))
+        // 2) Verificación detallada: distancia media recortada (ignoramos el 15 % de filas más distintas,
+        //    que suelen ser el resaltado del ratón o un detalle animado).
+        int bestD = int.MinValue;
+        double bestCost = double.MaxValue, bestDistance = double.MaxValue;
+        var dists = new List<float>(n);
+        foreach (int d in candidates.Distinct())
+        {
+            int from = Math.Max(0, -d), to = Math.Min(n, n - d);
+            dists.Clear();
+            for (int i = from; i < to; i++)
             {
-                bestScore = score;
+                int a = offset + i, b = offset + i + d;
+                if (!cur.Informative[a] && !prev.Informative[b]) continue;
+                dists.Add(Dist(cur.Sig[a], prev.Sig[b]));
+            }
+            if (dists.Count < 10) continue;
+            dists.Sort();
+            int keep = Math.Max(1, (int)(dists.Count * 0.85));
+            double cost = 0;
+            for (int k = 0; k < keep; k++) cost += dists[k];
+            cost /= keep;
+
+            double distance = expected > 0 ? Math.Abs(d - expected) : Math.Abs(d);
+            if (cost < bestCost - 0.05 || (Math.Abs(cost - bestCost) <= 0.05 && distance < bestDistance))
+            {
+                bestCost = cost;
                 bestD = d;
                 bestDistance = distance;
             }
         }
-        return bestScore >= 0.97 ? bestD : -1;
+        // Solo aceptamos avances (d > 0) con una coincidencia clara.
+        return bestD > 0 && bestCost < AcceptCost ? bestD : -1;
     }
 
     public BitmapSource Result()
     {
-        var footerRows = _footer > 0 ? _lastRows.Skip(_height - _footer).ToArray() : Array.Empty<byte[]>();
-        var all = _header < 0
-            ? _lastRows // nunca se movió: devolvemos el único fotograma
-            : _headerRows.Concat(_bodyRows).Concat(footerRows).ToArray();
+        var footerRows = _footer > 0 ? _last.Rows.Skip(_height - _footer).ToArray() : Array.Empty<byte[]>();
+        var all = _header < 0 ? _last.Rows : _headerRows.Concat(_bodyRows).Concat(footerRows).ToArray();
 
         var pixels = new byte[_stride * all.Length];
         for (int i = 0; i < all.Length; i++) Buffer.BlockCopy(all[i], 0, pixels, i * _stride, _stride);
@@ -135,7 +166,14 @@ public sealed class ScrollStitcher
         return bmp;
     }
 
-    private (byte[][] rows, ulong[] hashes, bool[] uniform) Split(BitmapSource frame)
+    private static float Dist(float[] a, float[] b)
+    {
+        float s = 0;
+        for (int i = 0; i < a.Length; i++) s += Math.Abs(a[i] - b[i]);
+        return s / a.Length;
+    }
+
+    private Frame Analyze(BitmapSource frame)
     {
         if (frame.PixelWidth != _width || frame.PixelHeight != _height)
             throw new ArgumentException("Todos los fotogramas deben tener el mismo tamaño.");
@@ -144,32 +182,36 @@ public sealed class ScrollStitcher
         src.CopyPixels(all, _stride, 0);
 
         var rows = new byte[_height][];
-        var hashes = new ulong[_height];
-        var uniform = new bool[_height];
+        var sig = new float[_height][];
+        var mean = new float[_height];
+        var informative = new bool[_height];
         for (int y = 0; y < _height; y++)
         {
             var row = new byte[_stride];
             Buffer.BlockCopy(all, y * _stride, row, 0, _stride);
             rows[y] = row;
-            (hashes[y], uniform[y]) = HashRow(row, _hashBytes);
-        }
-        return (rows, hashes, uniform);
-    }
 
-    private static (ulong hash, bool uniform) HashRow(byte[] row, int length)
-    {
-        // FNV-1a de 64 bits sobre los píxeles (ignorando el canal alfa).
-        ulong h = 14695981039346656037UL;
-        bool uniform = true;
-        byte b0 = row[0], g0 = row[1], r0 = row[2];
-        for (int i = 0; i < length; i += 4)
-        {
-            byte b = row[i], g = row[i + 1], r = row[i + 2];
-            h = (h ^ b) * 1099511628211UL;
-            h = (h ^ g) * 1099511628211UL;
-            h = (h ^ r) * 1099511628211UL;
-            if (uniform && (b != b0 || g != g0 || r != r0)) uniform = false;
+            var s = new float[_bins];
+            float total = 0, min = 255, max = 0;
+            for (int bIdx = 0; bIdx < _bins; bIdx++)
+            {
+                int start = bIdx * _binPx * 4;
+                float acc = 0;
+                for (int x = 0; x < _binPx; x++)
+                {
+                    int i = start + x * 4;
+                    acc += row[i] * 0.114f + row[i + 1] * 0.587f + row[i + 2] * 0.299f;
+                }
+                float v = acc / _binPx;
+                s[bIdx] = v;
+                total += v;
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+            sig[y] = s;
+            mean[y] = total / _bins;
+            informative[y] = max - min > 6; // filas lisas (fondo) no ayudan a alinear
         }
-        return (h, uniform);
+        return new Frame(rows, sig, mean, informative);
     }
 }

@@ -29,6 +29,11 @@ public sealed class ScrollSession
     }
 
     public int Height => _stitcher.StitchedHeight;
+
+    // Diagnóstico
+    public int Appended { get; private set; }
+    public int NoMatches { get; private set; }
+    public int Stills { get; private set; }
     public bool IsAuto => _auto;
 
     public void Stop() => _stop = true;
@@ -70,6 +75,7 @@ public sealed class ScrollSession
             switch (result)
             {
                 case ScrollStitcher.AddResult.Appended:
+                    Appended++;
                     movedSinceWheel = true;
                     stillFrames = 0;
                     if (_auto)
@@ -81,12 +87,14 @@ public sealed class ScrollSession
                     break;
 
                 case ScrollStitcher.AddResult.NoMovement:
+                    Stills++;
                     stillFrames++;
                     break;
 
                 case ScrollStitcher.AddResult.NoMatch:
                     // El usuario subió, o bajó demasiado rápido: ignoramos el fotograma y esperamos
                     // a que vuelva a coincidir con lo último que guardamos.
+                    NoMatches++;
                     stillFrames = 0;
                     if (_auto) notches = Math.Max(1, notches / 2);
                     break;
