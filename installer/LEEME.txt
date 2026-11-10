@@ -1,0 +1,20 @@
+APPSHOTACREEN 0.1 - Instalación
+================================
+
+1. Descomprime TODO el .zip en una carpeta (por ejemplo, en Descargas).
+2. Haz doble clic en "Instalar.cmd".
+   - Si Windows muestra "Windows protegió su PC", pulsa "Más información" y luego "Ejecutar de todas formas".
+     (Sale porque la app no tiene firma digital de una empresa.)
+3. Responde si quieres que se inicie con Windows.
+
+No necesita instalar .NET ni permisos de administrador.
+Se instala en: %LOCALAPPDATA%\Programs\APPSHOTACREEN
+
+Atajos:
+  Impr Pant / Ctrl+Shift+S  Capturar región
+  Ctrl+Shift+F              Pantalla completa
+  Ctrl+Shift+D              Captura con desplazamiento
+
+Para desinstalar: Configuración > Aplicaciones > Aplicaciones instaladas > APPSHOTACREEN > Desinstalar.
+
+Uso portátil (sin instalar): también puedes ejecutar AppShotScreen.exe directamente.
