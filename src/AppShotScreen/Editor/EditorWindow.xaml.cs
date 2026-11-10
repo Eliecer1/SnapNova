@@ -39,7 +39,7 @@ public partial class EditorWindow : Window
         EffBorder.IsChecked = settings.EffectBorder;
 
         SetBase(image);
-        Zoom.ValueChanged += (_, e) => { ZoomTransform.ScaleX = ZoomTransform.ScaleY = e.NewValue; UpdateStatus(); };
+        Zoom.ValueChanged += (_, e) => { ZoomTransform.ScaleX = ZoomTransform.ScaleY = e.NewValue; UpdateScalingMode(); UpdateStatus(); };
         _undo.Changed += UpdateUndoButtons;
         UpdateUndoButtons();
 
@@ -62,6 +62,20 @@ public partial class EditorWindow : Window
         Surface.Width = Interaction.Width = img.PixelWidth;
         Surface.Height = Interaction.Height = img.PixelHeight;
         UpdateStatus();
+    }
+
+    /// <summary>
+    /// Vista nítida: al tamaño real o ampliada se ven los píxeles tal cual; al reducir (Ajustar)
+    /// se suaviza con alta calidad para que el texto no se vea "roto". Solo afecta a la vista,
+    /// la imagen que se guarda o copia siempre es la original.
+    /// </summary>
+    private void UpdateScalingMode()
+    {
+        double dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        double screenScale = Zoom.Value * dpi; // píxeles de pantalla por píxel de imagen
+        var mode = screenScale >= 0.999 ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality;
+        RenderOptions.SetBitmapScalingMode(BaseImage, mode);
+        RenderOptions.SetBitmapScalingMode(Surface, mode);
     }
 
     private void UpdateStatus() =>

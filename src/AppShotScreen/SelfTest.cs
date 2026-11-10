@@ -36,6 +36,44 @@ internal static class SelfTest
             editor.Show();
             editor.UpdateLayout();
             var surface = (System.Windows.Controls.Canvas)editor.FindName("Surface");
+
+            // Nitidez: sin anotaciones, la imagen exportada debe ser idéntica píxel a píxel a la captura.
+            {
+                var plain = Exporter.Render(surface);
+                int st = crop.PixelWidth * 4;
+                var a = new byte[st * crop.PixelHeight];
+                var b = new byte[st * crop.PixelHeight];
+                crop.CopyPixels(a, st, 0);
+                new FormatConvertedBitmap(plain, PixelFormats.Bgra32, null, 0).CopyPixels(b, st, 0);
+                int diff = 0;
+                for (int i = 0; i < a.Length; i += 4)
+                    if (a[i] != b[i] || a[i + 1] != b[i + 1] || a[i + 2] != b[i + 2]) diff++;
+                if (plain.PixelWidth == crop.PixelWidth && diff == 0) Ok("exportación idéntica píxel a píxel a la captura (sin pérdida)");
+                else Fail($"exportación difiere de la captura en {diff} píxeles de {a.Length / 4}");
+
+                // Guardado PNG y portapapeles también sin pérdida
+                string tmp = Path.Combine(outDir, "0_sin_anotar.png");
+                Exporter.Save(plain, tmp);
+                var dec = new PngBitmapDecoder(new Uri(tmp), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
+                var c = new byte[st * crop.PixelHeight];
+                new FormatConvertedBitmap(dec, PixelFormats.Bgra32, null, 0).CopyPixels(c, st, 0);
+                int diffPng = 0;
+                for (int i = 0; i < a.Length; i += 4)
+                    if (a[i] != c[i] || a[i + 1] != c[i + 1] || a[i + 2] != c[i + 2]) diffPng++;
+                if (diffPng == 0) Ok("PNG guardado idéntico a la captura");
+                else Fail($"PNG guardado difiere en {diffPng} píxeles");
+
+                // Con sombra y borde, la imagen interior debe seguir intacta.
+                var fx = Exporter.ApplyEffects(plain, shadow: true, border: true, borderBrush: Brushes.Black, borderWidth: 3);
+                var inner = new byte[st * crop.PixelHeight];
+                new FormatConvertedBitmap(new CroppedBitmap(fx, new Int32Rect(14 + 3, 14 + 3, crop.PixelWidth, crop.PixelHeight)), PixelFormats.Bgra32, null, 0)
+                    .CopyPixels(inner, st, 0);
+                int diffFx = 0;
+                for (int i = 0; i < a.Length; i += 4)
+                    if (a[i] != inner[i] || a[i + 1] != inner[i + 1] || a[i + 2] != inner[i + 2]) diffFx++;
+                if (diffFx == 0) Ok("con sombra y borde la imagen sigue nítida (idéntica)");
+                else Fail($"con efectos la imagen difiere en {diffFx} píxeles (se desenfoca)");
+            }
             var red = Brushes.Red;
             surface.Children.Add(Annotations.Arrow(new Point(40, 40), new Point(300, 200), red, 4));
             surface.Children.Add(Annotations.Rectangle(new Rect(320, 60, 200, 120), Brushes.DodgerBlue, 4));

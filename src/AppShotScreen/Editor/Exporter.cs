@@ -31,32 +31,43 @@ public static class Exporter
     {
         if (!shadow && !border) return img;
 
-        var image = new Image { Source = img, Width = img.PixelWidth, Height = img.PixelHeight, Stretch = Stretch.Fill };
-        FrameworkElement content = image;
-        if (border)
+        // Todo en coordenadas enteras: la imagen se copia píxel a píxel, sin re-muestrear (sin desenfoque).
+        int bw = border ? Math.Max(1, borderWidth) : 0;
+        int padLT = shadow ? 14 : 0, padRB = shadow ? 26 : 0;
+        int boxW = img.PixelWidth + bw * 2, boxH = img.PixelHeight + bw * 2;
+        int totalW = padLT + boxW + padRB, totalH = padLT + boxH + padRB;
+        var box = new Rect(padLT, padLT, boxW, boxH);
+
+        BitmapSource? shadowLayer = null;
+        if (shadow)
         {
-            content = new Border
+            // La sombra se dibuja aparte (desenfocada) y debajo; nunca toca los píxeles de la imagen.
+            var rect = new System.Windows.Shapes.Rectangle
             {
-                BorderBrush = borderBrush,
-                BorderThickness = new Thickness(borderWidth),
-                Child = image,
+                Width = boxW, Height = boxH, Fill = new SolidColorBrush(Color.FromArgb(128, 0, 0, 0)),
+                Effect = new BlurEffect { Radius = 16, KernelType = KernelType.Gaussian },
             };
+            var canvas = new Canvas { Width = totalW, Height = totalH };
+            Canvas.SetLeft(rect, padLT + 6);
+            Canvas.SetTop(rect, padLT + 6);
+            canvas.Children.Add(rect);
+            canvas.Measure(new Size(totalW, totalH));
+            canvas.Arrange(new Rect(0, 0, totalW, totalH));
+            var srtb = new RenderTargetBitmap(totalW, totalH, 96, 96, PixelFormats.Pbgra32);
+            srtb.Render(canvas);
+            srtb.Freeze();
+            shadowLayer = srtb;
         }
 
-        double margin = shadow ? 24 : 0;
-        var host = new Grid { Background = shadow ? Brushes.Transparent : null };
-        content.Margin = new Thickness(margin * 0.6, margin * 0.6, margin, margin);
-        if (shadow) content.Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 6, Direction = 315, Opacity = 0.5, Color = Colors.Black };
-        host.Children.Add(content);
-
-        double totalW = img.PixelWidth + (border ? borderWidth * 2 : 0) + margin * 1.6;
-        double totalH = img.PixelHeight + (border ? borderWidth * 2 : 0) + margin * 1.6;
-        host.Measure(new Size(totalW, totalH));
-        host.Arrange(new Rect(0, 0, totalW, totalH));
-        host.UpdateLayout();
-
-        var rtb = new RenderTargetBitmap((int)Math.Ceiling(totalW), (int)Math.Ceiling(totalH), 96, 96, PixelFormats.Pbgra32);
-        rtb.Render(host);
+        var dv = new DrawingVisual();
+        using (var ctx = dv.RenderOpen())
+        {
+            if (shadowLayer != null) ctx.DrawImage(shadowLayer, new Rect(0, 0, totalW, totalH));
+            if (border) ctx.DrawRectangle(borderBrush, null, box);
+            ctx.DrawImage(img, new Rect(padLT + bw, padLT + bw, img.PixelWidth, img.PixelHeight));
+        }
+        var rtb = new RenderTargetBitmap(totalW, totalH, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(dv);
         rtb.Freeze();
         return rtb;
     }
