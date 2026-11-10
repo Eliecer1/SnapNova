@@ -21,11 +21,12 @@ public sealed class ScrollStitcher
     private byte[][] _headerRows = Array.Empty<byte[]>();
     private Frame _last;
     private int _header = -1, _footer = -1;
+    private int _guard, _lastBodyEnd;
 
     private sealed record Frame(byte[][] Rows, float[][] Sig, float[] Mean, bool[] Informative);
 
     public int LastShift { get; private set; }
-    public int StitchedHeight => _header < 0 ? _height : _headerRows.Length + _bodyRows.Count + Math.Max(0, _footer);
+    public int StitchedHeight => _header < 0 ? _height : _headerRows.Length + _bodyRows.Count + _guard + Math.Max(0, _footer);
 
     public ScrollStitcher(BitmapSource first)
     {
@@ -77,15 +78,29 @@ public sealed class ScrollStitcher
         int shift = FindShift(_last, cur, header, n, expectedShift);
         if (shift <= 0) return AddResult.NoMatch;
 
+        // Franja de guarda: no tomamos las últimas filas del cuerpo de cada fotograma, porque ahí
+        // el navegador muestra cosas pasajeras (la dirección del enlace bajo el ratón, avisos).
+        // Esas filas se toman del fotograma siguiente, ya más arriba, o del último al terminar.
+        int guard = Math.Min(Math.Clamp(_height / 12, 24, 90), n / 4);
         if (_header < 0)
         {
             _headerRows = _last.Rows.Take(header).ToArray();
-            for (int i = header; i < header + n; i++) _bodyRows.Add(_last.Rows[i]);
+            for (int i = header; i < header + n - guard; i++) _bodyRows.Add(_last.Rows[i]);
+        }
+        else
+        {
+            // Lo acumulado termina en la fila (_lastBodyEnd - _guard) del fotograma anterior; lo nuevo
+            // empalma en (header + n - guard). Si cambió el pie fijo o la guarda, ajustamos la diferencia.
+            int oldEnd = _lastBodyEnd - _guard, newEnd = header + n - guard;
+            if (newEnd > oldEnd) for (int i = oldEnd; i < newEnd; i++) _bodyRows.Add(_last.Rows[i]);
+            else if (newEnd < oldEnd) _bodyRows.RemoveRange(Math.Max(0, _bodyRows.Count - (oldEnd - newEnd)), Math.Min(_bodyRows.Count, oldEnd - newEnd));
         }
         _header = header;
         _footer = footer;
+        _guard = guard;
+        _lastBodyEnd = header + n;
 
-        for (int i = header + n - shift; i < header + n; i++) _bodyRows.Add(cur.Rows[i]);
+        for (int i = header + n - guard - shift; i < header + n - guard; i++) _bodyRows.Add(cur.Rows[i]);
 
         _last = cur;
         LastShift = shift;
@@ -157,7 +172,8 @@ public sealed class ScrollStitcher
     public BitmapSource Result()
     {
         var footerRows = _footer > 0 ? _last.Rows.Skip(_height - _footer).ToArray() : Array.Empty<byte[]>();
-        var all = _header < 0 ? _last.Rows : _headerRows.Concat(_bodyRows).Concat(footerRows).ToArray();
+        var guardRows = _header < 0 ? Array.Empty<byte[]>() : _last.Rows.Skip(_lastBodyEnd - _guard).Take(_guard).ToArray();
+        var all = _header < 0 ? _last.Rows : _headerRows.Concat(_bodyRows).Concat(guardRows).Concat(footerRows).ToArray();
 
         var pixels = new byte[_stride * all.Length];
         for (int i = 0; i < all.Length; i++) Buffer.BlockCopy(all[i], 0, pixels, i * _stride, _stride);
