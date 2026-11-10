@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using AppShotScreen.Capture;
 using AppShotScreen.Editor;
@@ -91,7 +92,7 @@ public partial class App : Application
 
         _tray = new Forms.NotifyIcon
         {
-            Icon = BuildIcon(),
+            Icon = LoadTrayIcon(),
             Text = "APPSHOTACREEN — Impr Pant para capturar",
             ContextMenuStrip = menu,
             Visible = true,
@@ -247,6 +248,17 @@ public partial class App : Application
     {
         Directory.CreateDirectory(_settings.SaveFolder);
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_settings.SaveFolder}\"") { UseShellExecute = true });
+    }
+
+    /// <summary>Icono de la app para las ventanas (barra de título y barra de tareas).</summary>
+    public static readonly ImageSource AppIconImage = BitmapFrame.Create(new Uri("pack://application:,,,/Assets/app.ico"));
+
+    private static Drawing.Icon LoadTrayIcon()
+    {
+        var res = GetResourceStream(new Uri("pack://application:,,,/Assets/app.ico"));
+        if (res == null) return BuildIcon();
+        using var s = res.Stream;
+        return new Drawing.Icon(s, Forms.SystemInformation.SmallIconSize);
     }
 
     /// <summary>Icono dibujado en código (un visor con esquinas), para no depender de archivos.</summary>

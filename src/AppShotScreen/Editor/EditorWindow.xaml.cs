@@ -29,6 +29,7 @@ public partial class EditorWindow : Window
     public EditorWindow(BitmapSource image, Settings settings)
     {
         InitializeComponent();
+        Icon = App.AppIconImage;
         _settings = settings;
         _base = image;
         _color = BrushFrom(settings.ToolColor);
