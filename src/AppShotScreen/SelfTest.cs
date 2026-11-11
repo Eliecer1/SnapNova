@@ -14,7 +14,7 @@ namespace AppShotScreen;
 /// </summary>
 internal static class SelfTest
 {
-    public static async Task<int> RunAsync(string outDir)
+    public static async Task<int> RunAsync(string outDir, bool fast = false)
     {
         Directory.CreateDirectory(outDir);
         var log = new List<string>();
@@ -64,9 +64,9 @@ internal static class SelfTest
                 else Fail($"PNG guardado difiere en {diffPng} píxeles");
 
                 // Con sombra y borde, la imagen interior debe seguir intacta.
-                var fx = Exporter.ApplyEffects(plain, shadow: true, border: true, borderBrush: Brushes.Black, borderWidth: 3);
+                var fx = Exporter.Compose(plain, new PresentationStyle { Shadow = true, Border = true, BorderBrush = Brushes.Black, BorderWidth = 3 });
                 var inner = new byte[st * crop.PixelHeight];
-                new FormatConvertedBitmap(new CroppedBitmap(fx, new Int32Rect(14 + 3, 14 + 3, crop.PixelWidth, crop.PixelHeight)), PixelFormats.Bgra32, null, 0)
+                new FormatConvertedBitmap(new CroppedBitmap(fx, new Int32Rect(32 + 3, 32 + 3, crop.PixelWidth, crop.PixelHeight)), PixelFormats.Bgra32, null, 0)
                     .CopyPixels(inner, st, 0);
                 int diffFx = 0;
                 for (int i = 0; i < a.Length; i += 4)
@@ -97,7 +97,7 @@ internal static class SelfTest
             else Fail($"color en la flecha inesperado BGRA={string.Join(",", px)}");
 
             Exporter.Save(rendered, Path.Combine(outDir, "1_anotado.png"));
-            var withFx = Exporter.ApplyEffects(rendered, shadow: true, border: true, borderBrush: Brushes.Black, borderWidth: 3);
+            var withFx = Exporter.Compose(rendered, new PresentationStyle { Shadow = true, Border = true, BorderBrush = Brushes.Black, BorderWidth = 3 });
             if (withFx.PixelWidth > rendered.PixelWidth) Ok($"efectos sombra+borde {withFx.PixelWidth}x{withFx.PixelHeight}");
             else Fail("los efectos no ampliaron la imagen");
             Exporter.Save(withFx, Path.Combine(outDir, "2_efectos.png"));
@@ -119,7 +119,8 @@ internal static class SelfTest
 
             editor.Close();
 
-            await SelfTestScroll.RunAsync(outDir, Ok, Fail);
+            await SelfTestFeatures.RunAsync(outDir, crop, Ok, Fail);
+            if (!fast) await SelfTestScroll.RunAsync(outDir, Ok, Fail);
         }
         catch (Exception ex)
         {

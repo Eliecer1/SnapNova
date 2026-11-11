@@ -14,6 +14,8 @@ Atajos:
   Impr Pant / Ctrl+Shift+S  Capturar región
   Ctrl+Shift+F              Pantalla completa
   Ctrl+Shift+D              Captura con desplazamiento
+  Ctrl+Alt+T                Copiar el texto de una zona (OCR)
+  Ctrl+Alt+P                Capturar y fijar en pantalla
 
 Para desinstalar: Configuración > Aplicaciones > Aplicaciones instaladas > APPSHOTACREEN > Desinstalar.
 

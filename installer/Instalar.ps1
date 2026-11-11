@@ -22,9 +22,10 @@ Copy-Item $src $exe -Force
 Copy-Item (Join-Path $PSScriptRoot 'Desinstalar.ps1') $dest -Force
 Unblock-File $exe -ErrorAction SilentlyContinue
 
-function New-Shortcut($path) {
+function New-Shortcut($path, $arguments = '') {
     $sh = (New-Object -ComObject WScript.Shell).CreateShortcut($path)
     $sh.TargetPath = $exe
+    $sh.Arguments = $arguments
     $sh.WorkingDirectory = $dest
     $sh.IconLocation = "$exe,0"
     $sh.Description = 'Capturas de pantalla con editor'
@@ -36,7 +37,7 @@ New-Shortcut $escrit
 Write-Host '  - Acceso directo en el menú Inicio y en el escritorio'
 
 $r = Read-Host '  ¿Iniciar APPSHOTACREEN automáticamente al encender la PC? (S/N)'
-if ($r -match '^[sSyY]') { New-Shortcut $inicio; Write-Host '  - Se iniciará con Windows' }
+if ($r -match '^[sSyY]') { New-Shortcut $inicio '--tray'; Write-Host '  - Se iniciará con Windows' }
 elseif (Test-Path $inicio) { Remove-Item $inicio -Force }
 
 # Registro en "Aplicaciones instaladas" de Windows para poder desinstalar desde Configuración.

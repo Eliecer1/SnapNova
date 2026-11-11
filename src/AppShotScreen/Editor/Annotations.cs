@@ -133,6 +133,23 @@ public static class Annotations
         return grid;
     }
 
+    /// <summary>Capa de "foco": oscurece todo el lienzo salvo los rectángulos indicados.</summary>
+    public static Geometry SpotlightGeometry(Size surface, IEnumerable<Rect> holes)
+    {
+        Geometry result = new RectangleGeometry(new Rect(surface));
+        foreach (var h in holes)
+            result = new CombinedGeometry(GeometryCombineMode.Exclude, result, new RectangleGeometry(h, 6, 6));
+        return result;
+    }
+
+    public static Path SpotlightLayer() => new()
+    {
+        Fill = new SolidColorBrush(Color.FromArgb(0x99, 0, 0, 0)),
+        Tag = SpotlightTag,
+    };
+
+    public const string SpotlightTag = "spotlight";
+
     public static UIElement BlurPreview(Rect r)
     {
         var el = new Rectangle

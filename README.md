@@ -34,6 +34,19 @@ Abajo: **Sombra** y **Borde** se aplican al exportar. **Extraer texto** usa el O
 
 Las capturas se guardan en `Imágenes\APPSHOTACREEN`. Las preferencias están en `%APPDATA%\APPSHOTACREEN\settings.json`.
 
+## Novedades 0.2
+
+- **Ventana de inicio** con los modos de captura y las capturas recientes (historial local en `%LOCALAPPDATA%\APPSHOTACREEN\Historial`, últimas 60). Clic en el icono de la bandeja para abrirla. Con `--tray` arranca solo en la bandeja.
+- **Captura inteligente**: al pasar el ratón se resalta la ventana y un clic la captura; arrastrar sigue eligiendo una región. Lupa con coordenadas y color; **C** copia el color (#RRGGBB).
+- **Presentación**: fondo degradado, margen, esquinas redondeadas, sombra y borde (panel derecho del editor). La captura se copia píxel a píxel.
+- **Ocultar datos sensibles**: detecta con OCR correos, teléfonos, tarjetas, IPs e identificaciones y los pixela.
+- **Fijar en pantalla** (Ctrl+Alt+P o botón Fijar): la captura flota encima; arrastrar la mueve, la rueda cambia el tamaño, doble clic la cierra y el clic derecho abre el menú.
+- **Copiar texto** (Ctrl+Alt+T): selecciona una zona y su texto va al portapapeles.
+- **Foco** (F): oscurece todo menos las zonas marcadas. **Clic derecho** sobre una anotación la elimina.
+- Editor rediseñado: barra lateral de herramientas, barra flotante de color y grosor, tema oscuro.
+
+Pruebas rápidas (sin las de desplazamiento): `AppShotScreen.exe --selftest salida --fast`
+
 ## Desarrollo
 
 ```bash

@@ -19,6 +19,13 @@ public sealed class Settings
     public string BorderColor { get; set; } = "#FF2D2D2D";
     public int BorderWidth { get; set; } = 2;
 
+    // Presentación (fondo degradado, margen, esquinas)
+    public int PresentationBackground { get; set; } = -1;
+    public int PresentationPadding { get; set; } = 64;
+    public int PresentationRadius { get; set; } = 0;
+
+    public bool ShowHomeOnStart { get; set; } = true;
+
     // Estilo de herramientas del editor
     public string ToolColor { get; set; } = "#FFE53935";
     public double ToolThickness { get; set; } = 4;

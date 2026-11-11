@@ -18,7 +18,10 @@ public partial class App : Application
     private const uint VK_F = 0x46;
     private const uint VK_D = 0x44;
     private const uint VK_ESCAPE = 0x1B;
+    private const uint VK_T = 0x54;
+    private const uint VK_P = 0x50;
 
+    private HomeWindow? _home;
     private Mutex? _singleInstance;
     private Forms.NotifyIcon? _tray;
     private HotkeyManager? _hotkeys;
@@ -33,7 +36,8 @@ public partial class App : Application
         if (selfIdx >= 0)
         {
             string dir = selfIdx + 1 < e.Args.Length ? e.Args[selfIdx + 1] : Path.Combine(Path.GetTempPath(), "appshot-selftest");
-            Dispatcher.InvokeAsync(async () => Shutdown(await SelfTest.RunAsync(dir)));
+            bool fast = e.Args.Contains("--fast");
+            Dispatcher.InvokeAsync(async () => Shutdown(await SelfTest.RunAsync(dir, fast)));
             return;
         }
 
@@ -60,13 +64,18 @@ public partial class App : Application
         }
 
         _singleInstance = new Mutex(true, "APPSHOTACREEN_single_instance", out bool isFirst);
+        var showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "APPSHOTACREEN_show_home");
         if (!isFirst)
         {
-            MessageBox.Show("APPSHOTACREEN ya se está ejecutando. Búscalo en la bandeja del sistema (junto al reloj).",
-                "APPSHOTACREEN", MessageBoxButton.OK, MessageBoxImage.Information);
+            // Ya está abierta: le pedimos a esa copia que muestre su ventana de inicio y salimos.
+            showSignal.Set();
             Shutdown();
             return;
         }
+        new Thread(() =>
+        {
+            while (showSignal.WaitOne()) Dispatcher.BeginInvoke(ShowHome);
+        }) { IsBackground = true, Name = "show-home-listener" }.Start();
 
         DispatcherUnhandledException += (_, ex) =>
         {
@@ -82,8 +91,105 @@ public partial class App : Application
         int openIdx = Array.IndexOf(e.Args, "--open");
         if (openIdx >= 0 && openIdx + 1 < e.Args.Length) OpenImageFile(e.Args[openIdx + 1]);
         else if (e.Args.Contains("--capture")) _ = CaptureRegionAsync();
+        else if (e.Args.Contains("--tray")) _tray!.ShowBalloonTip(4000, "APPSHOTACREEN está listo", hotkeyInfo, Forms.ToolTipIcon.Info);
+        else ShowHome(); // inicio normal: la ventana principal; con --tray (arranque con Windows) queda en la bandeja
+    }
 
-        _tray!.ShowBalloonTip(4000, "APPSHOTACREEN está listo", hotkeyInfo, Forms.ToolTipIcon.Info);
+    private void ShowHome()
+    {
+        if (_home == null)
+        {
+            _home = new HomeWindow();
+            _home.Closed += (_, _) => _home = null;
+            _home.OpenFileRequested += OpenImageFile;
+            _home.ModeRequested += mode =>
+            {
+                switch (mode)
+                {
+                    case HomeWindow.ModeRegion: _ = CaptureRegionAsync(); break;
+                    case HomeWindow.ModeFull: _ = CaptureFullScreenAsync(); break;
+                    case HomeWindow.ModeScroll: _ = CaptureScrollingAsync(); break;
+                    case HomeWindow.ModeText: _ = CaptureTextAsync(); break;
+                    case HomeWindow.ModePin: _ = CapturePinAsync(); break;
+                    case HomeWindow.ModeDelay: _ = CaptureRegionAsync(TimeSpan.FromSeconds(3)); break;
+                    case HomeWindow.ModeOpen: PickAndOpenImage(); break;
+                }
+            };
+        }
+        _home.Show();
+        if (_home.WindowState == WindowState.Minimized) _home.WindowState = WindowState.Normal;
+        _home.Activate();
+    }
+
+    /// <summary>
+    /// Congela la pantalla y deja elegir región o ventana. Oculta antes la ventana de inicio
+    /// para que no salga en la captura.
+    /// </summary>
+    private async Task<OverlayWindow> SelectAsync(TimeSpan? delay = null, string? hint = null)
+    {
+        bool homeWasVisible = _home is { IsVisible: true };
+        if (homeWasVisible) _home!.Hide();
+        // Espera a que se cierren el menú de la bandeja o la ventana de inicio antes de "congelar".
+        await Task.Delay(delay ?? TimeSpan.FromMilliseconds(homeWasVisible ? 300 : 150));
+
+        var windows = WindowFinder.Snapshot();
+        var bounds = ScreenCapture.VirtualScreen;
+        var overlay = new OverlayWindow(ScreenCapture.Capture(bounds), bounds, windows);
+        if (hint != null) overlay.HintText = hint;
+        overlay.ShowDialog();
+
+        if (overlay.PickedColor is { } color)
+        {
+            try { Clipboard.SetText(color); } catch { /* portapapeles ocupado */ }
+            ToastWindow.Show("Color copiado", color);
+        }
+        return overlay;
+    }
+
+    /// <summary>Selecciona una zona y copia su texto (OCR) al portapapeles.</summary>
+    private async Task CaptureTextAsync()
+    {
+        if (_capturing) return;
+        _capturing = true;
+        try
+        {
+            var overlay = await SelectAsync(hint: "Copiar texto: selecciona la zona con el texto  ·  Clic = ventana completa  ·  Esc = cancelar");
+            if (overlay.Result is not { } shot) return;
+            string text = await OcrService.RecognizeAsync(shot);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                ToastWindow.Show("No se encontró texto", "Prueba con una zona más grande o con letras más nítidas.");
+                return;
+            }
+            Clipboard.SetText(text);
+            ToastWindow.Show("Texto copiado al portapapeles", text.Replace(Environment.NewLine, " "));
+        }
+        catch (Exception ex)
+        {
+            ToastWindow.Show("No se pudo leer el texto", ex.Message);
+        }
+        finally
+        {
+            _capturing = false;
+        }
+    }
+
+    /// <summary>Selecciona una zona y la deja fijada encima, justo donde estaba.</summary>
+    private async Task CapturePinAsync()
+    {
+        if (_capturing) return;
+        _capturing = true;
+        try
+        {
+            var overlay = await SelectAsync(hint: "Fijar en pantalla: selecciona la zona que quieres dejar a la vista  ·  Esc = cancelar");
+            if (overlay.Result is not { } shot) return;
+            History.Add(shot);
+            PinWindow.Show(shot, _settings, overlay.SelectedScreenRect);
+        }
+        finally
+        {
+            _capturing = false;
+        }
     }
 
     private string RegisterHotkeys()
@@ -94,6 +200,8 @@ public partial class App : Application
         if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_S, () => _ = CaptureRegionAsync())) ok.Add("Ctrl+Shift+S = región");
         if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_F, () => _ = CaptureFullScreenAsync())) ok.Add("Ctrl+Shift+F = pantalla completa");
         if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_D, () => _ = CaptureScrollingAsync())) ok.Add("Ctrl+Shift+D = con desplazamiento");
+        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_ALT, VK_T, () => _ = CaptureTextAsync())) ok.Add("Ctrl+Alt+T = copiar texto");
+        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_ALT, VK_P, () => _ = CapturePinAsync())) ok.Add("Ctrl+Alt+P = capturar y fijar");
         return ok.Count > 0
             ? string.Join("\n", ok)
             : "No se pudieron registrar atajos (otra app los usa). Usa el icono de la bandeja.";
@@ -102,9 +210,13 @@ public partial class App : Application
     private void CreateTray()
     {
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Capturar región", null, (_, _) => _ = CaptureRegionAsync());
+        menu.Items.Add("Abrir APPSHOTACREEN", null, (_, _) => ShowHome());
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        menu.Items.Add("Capturar región o ventana", null, (_, _) => _ = CaptureRegionAsync());
         menu.Items.Add("Capturar pantalla completa", null, (_, _) => _ = CaptureFullScreenAsync());
         menu.Items.Add("Captura con desplazamiento", null, (_, _) => _ = CaptureScrollingAsync());
+        menu.Items.Add("Copiar texto de la pantalla", null, (_, _) => _ = CaptureTextAsync());
+        menu.Items.Add("Capturar y fijar en pantalla", null, (_, _) => _ = CapturePinAsync());
         menu.Items.Add("Capturar región en 3 s", null, (_, _) => _ = CaptureRegionAsync(TimeSpan.FromSeconds(3)));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Abrir imagen en el editor…", null, (_, _) => PickAndOpenImage());
@@ -119,7 +231,7 @@ public partial class App : Application
             ContextMenuStrip = menu,
             Visible = true,
         };
-        _tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) _ = CaptureRegionAsync(); };
+        _tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) ShowHome(); };
     }
 
     // ───────────────────────── Capturas ─────────────────────────
@@ -130,12 +242,7 @@ public partial class App : Application
         _capturing = true;
         try
         {
-            // Pequeña espera para que se cierre el menú de la bandeja antes de "congelar" la pantalla.
-            await Task.Delay(delay ?? TimeSpan.FromMilliseconds(150));
-            var bounds = ScreenCapture.VirtualScreen;
-            var frozen = ScreenCapture.Capture(bounds);
-            var overlay = new OverlayWindow(frozen, bounds);
-            overlay.ShowDialog();
+            var overlay = await SelectAsync(delay);
             if (overlay.Result is { } shot) HandleCapture(shot);
         }
         finally
@@ -153,13 +260,7 @@ public partial class App : Application
         ScrollPanelWindow? panel = null;
         try
         {
-            await Task.Delay(150);
-            var bounds = ScreenCapture.VirtualScreen;
-            var overlay = new OverlayWindow(ScreenCapture.Capture(bounds), bounds)
-            {
-                HintText = "Captura con desplazamiento: selecciona la zona que vas a desplazar  ·  Esc = cancelar",
-            };
-            overlay.ShowDialog();
+            var overlay = await SelectAsync(hint: "Captura con desplazamiento: arrastra la zona que vas a desplazar, o haz clic en la ventana  ·  Esc = cancelar");
             if (overlay.SelectedScreenRect is not { } region) return;
             await Task.Delay(250); // deja que la ventana de selección desaparezca por completo
 
@@ -205,7 +306,9 @@ public partial class App : Application
         _capturing = true;
         try
         {
-            await Task.Delay(150);
+            bool homeWasVisible = _home is { IsVisible: true };
+            if (homeWasVisible) _home!.Hide();
+            await Task.Delay(homeWasVisible ? 300 : 150);
             HandleCapture(ScreenCapture.CaptureCurrentMonitor());
         }
         finally
@@ -216,6 +319,7 @@ public partial class App : Application
 
     private void HandleCapture(BitmapSource shot)
     {
+        History.Add(shot);
         if (_settings.CopyToClipboardAfterCapture)
         {
             try { Exporter.CopyToClipboard(shot); } catch { /* portapapeles ocupado: no es crítico */ }

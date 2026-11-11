@@ -14,7 +14,7 @@
     <AssemblyName>AppShotScreen</AssemblyName>
     <RootNamespace>AppShotScreen</RootNamespace>
     <Product>APPSHOTACREEN</Product>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
   </PropertyGroup>
 
   <!-- WinForms y WPF comparten nombres; dejamos WPF como predeterminado. -->
