@@ -3,11 +3,11 @@ using System.Text.Json;
 
 namespace AppShotScreen.Services;
 
-/// <summary>Preferencias del usuario, guardadas como JSON en %APPDATA%\APPSHOTACREEN\settings.json.</summary>
+/// <summary>Preferencias del usuario, guardadas como JSON en %APPDATA%\SnapNova\settings.json.</summary>
 public sealed class Settings
 {
     public string SaveFolder { get; set; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "APPSHOTACREEN");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "SnapNova");
 
     /// <summary>false en las pruebas automáticas, para que no toquen las preferencias reales del usuario.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
@@ -16,6 +16,9 @@ public sealed class Settings
     public bool CopyToClipboardAfterCapture { get; set; } = true;
     public bool OpenEditorAfterCapture { get; set; } = true;
     public bool AutoSaveAfterCapture { get; set; } = false;
+
+    /// <summary>Atajos cambiados por el usuario (acción → "Ctrl+Alt+G"; vacío = desactivado). Los demás usan el valor por defecto.</summary>
+    public Dictionary<string, string> Hotkeys { get; set; } = new();
     public string FileNamePattern { get; set; } = "Captura_{0:yyyy-MM-dd_HH-mm-ss}";
 
     // Efectos al exportar
@@ -36,7 +39,7 @@ public sealed class Settings
     public double ToolThickness { get; set; } = 4;
 
     private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "APPSHOTACREEN", "settings.json");
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SnapNova", "settings.json");
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 

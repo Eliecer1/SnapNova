@@ -4,13 +4,13 @@ using AppShotScreen.Editor;
 
 namespace AppShotScreen.Services;
 
-/// <summary>Historial local de capturas (las últimas 60), para volver a abrirlas desde la ventana de inicio.</summary>
+/// <summary>Historial local de capturas (las últimas 200), para volver a abrirlas desde la ventana de inicio.</summary>
 public static class History
 {
-    private const int MaxItems = 60;
+    private const int MaxItems = 200;
 
     public static string Folder { get; internal set; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "APPSHOTACREEN", "Historial");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnapNova", "Historial");
 
     public static event Action? Changed;
 

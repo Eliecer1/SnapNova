@@ -1,8 +1,8 @@
-﻿# Desinstalador de APPSHOTACREEN
-$app  = 'APPSHOTACREEN'
+﻿# Desinstalador de SnapNova
+$app  = 'SnapNova'
 $dest = Join-Path $env:LOCALAPPDATA "Programs\$app"
 
-Get-Process AppShotScreen -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process SnapNova -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
 
 foreach ($lnk in @(
@@ -16,5 +16,5 @@ Remove-Item "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$app" -Re
 # El ejecutable se borra al final (este script vive en la misma carpeta).
 Start-Process cmd.exe -ArgumentList "/c timeout /t 2 >nul & rmdir /s /q `"$dest`"" -WindowStyle Hidden
 
-Write-Host "$app se desinstaló. Tus capturas en Imágenes\APPSHOTACREEN y tus ajustes no se tocaron." -ForegroundColor Green
+Write-Host "$app se desinstaló. Tus capturas en Imágenes\SnapNova y tus ajustes no se tocaron." -ForegroundColor Green
 Start-Sleep 3

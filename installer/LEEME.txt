@@ -1,4 +1,4 @@
-APPSHOTACREEN 0.1 - Instalación
+SnapNova 1.0 - Instalación
 ================================
 
 1. Descomprime TODO el .zip en una carpeta (por ejemplo, en Descargas).
@@ -8,7 +8,7 @@ APPSHOTACREEN 0.1 - Instalación
 3. Responde si quieres que se inicie con Windows.
 
 No necesita instalar .NET ni permisos de administrador.
-Se instala en: %LOCALAPPDATA%\Programs\APPSHOTACREEN
+Se instala en: %LOCALAPPDATA%\Programs\SnapNova
 
 Atajos:
   Impr Pant / Ctrl+Shift+S  Capturar región
@@ -17,7 +17,8 @@ Atajos:
   Ctrl+Alt+T                Copiar el texto de una zona (OCR)
   Ctrl+Alt+P                Capturar y fijar en pantalla
   Ctrl+Alt+G                Grabar una zona como GIF animado
+  (se pueden cambiar en la ventana de inicio > Atajos de teclado)
 
-Para desinstalar: Configuración > Aplicaciones > Aplicaciones instaladas > APPSHOTACREEN > Desinstalar.
+Para desinstalar: Configuración > Aplicaciones > Aplicaciones instaladas > SnapNova > Desinstalar.
 
-Uso portátil (sin instalar): también puedes ejecutar AppShotScreen.exe directamente.
+Uso portátil (sin instalar): también puedes ejecutar SnapNova.exe directamente.

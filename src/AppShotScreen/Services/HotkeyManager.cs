@@ -26,6 +26,13 @@ public sealed class HotkeyManager : IDisposable
         return true;
     }
 
+    /// <summary>Quita todos los atajos registrados (para volver a registrarlos con otra configuración).</summary>
+    public void UnregisterAll()
+    {
+        foreach (var id in _actions.Keys) Native.UnregisterHotKey(_source.Handle, id);
+        _actions.Clear();
+    }
+
     /// <summary>Registra un atajo temporal; devuelve su id (0 si falló) para quitarlo con <see cref="Unregister"/>.</summary>
     public int RegisterTemporary(uint modifiers, uint virtualKey, Action action)
     {

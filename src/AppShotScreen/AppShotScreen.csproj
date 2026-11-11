@@ -11,10 +11,10 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
-    <AssemblyName>AppShotScreen</AssemblyName>
+    <AssemblyName>SnapNova</AssemblyName>
     <RootNamespace>AppShotScreen</RootNamespace>
-    <Product>APPSHOTACREEN</Product>
-    <Version>0.3.0</Version>
+    <Product>SnapNova</Product>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <!-- WinForms y WPF comparten nombres; dejamos WPF como predeterminado. -->

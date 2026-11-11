@@ -1,11 +1,11 @@
-# APPSHOTACREEN
+# SnapNova
 
 App de capturas de pantalla para Windows (C# · .NET 9 · WPF), inspirada en el flujo de Snagit:
 capturar → anotar → copiar/guardar.
 
 ## Usar
 
-1. Ejecuta `dist\AppShotScreen.exe`. Aparece un icono azul en la bandeja del sistema, junto al reloj.
+1. Ejecuta `dist\SnapNova.exe`. Aparece un icono azul en la bandeja del sistema, junto al reloj.
 2. Captura:
    - **Impr Pant** o **Ctrl+Shift+S**: seleccionar región (arrastra; Enter = todo; Esc = cancelar)
    - **Ctrl+Shift+F**: pantalla completa del monitor actual
@@ -32,11 +32,11 @@ capturar → anotar → copiar/guardar.
 Ctrl+Z / Ctrl+Y deshacer y rehacer, Ctrl+C copiar, Ctrl+S guardar.
 Abajo: **Sombra** y **Borde** se aplican al exportar. **Extraer texto** usa el OCR de Windows y lo copia.
 
-Las capturas se guardan en `Imágenes\APPSHOTACREEN`. Las preferencias están en `%APPDATA%\APPSHOTACREEN\settings.json`.
+Las capturas se guardan en `Imágenes\SnapNova`. Las preferencias están en `%APPDATA%\SnapNova\settings.json`.
 
 ## Novedades 0.2
 
-- **Ventana de inicio** con los modos de captura y las capturas recientes (historial local en `%LOCALAPPDATA%\APPSHOTACREEN\Historial`, últimas 60). Clic en el icono de la bandeja para abrirla. Con `--tray` arranca solo en la bandeja.
+- **Ventana de inicio** con los modos de captura y las capturas recientes (historial local en `%LOCALAPPDATA%\SnapNova\Historial`, últimas 60). Clic en el icono de la bandeja para abrirla. Con `--tray` arranca solo en la bandeja.
 - **Captura inteligente**: al pasar el ratón se resalta la ventana y un clic la captura; arrastrar sigue eligiendo una región. Lupa con coordenadas y color; **C** copia el color (#RRGGBB).
 - **Presentación**: fondo degradado, margen, esquinas redondeadas, sombra y borde (panel derecho del editor). La captura se copia píxel a píxel.
 - **Ocultar datos sensibles**: detecta con OCR correos, teléfonos, tarjetas, IPs e identificaciones y los pixela.
@@ -45,7 +45,7 @@ Las capturas se guardan en `Imágenes\APPSHOTACREEN`. Las preferencias están en
 - **Foco** (F): oscurece todo menos las zonas marcadas. **Clic derecho** sobre una anotación la elimina.
 - Editor rediseñado: barra lateral de herramientas, barra flotante de color y grosor, tema oscuro.
 
-Pruebas rápidas (sin las de desplazamiento): `AppShotScreen.exe --selftest salida --fast`
+Pruebas rápidas (sin las de desplazamiento): `SnapNova.exe --selftest salida --fast`
 
 ## Novedades 0.3
 
@@ -54,6 +54,15 @@ Pruebas rápidas (sin las de desplazamiento): `AppShotScreen.exe --selftest sali
 - **Globo de texto** (G) y **sellos** (panel derecho): correcto, incorrecto, atención, destacado, información, duda.
 - **Arrastrar**: mantén pulsado el botón y suelta la imagen en WhatsApp, Word, un correo o una carpeta.
 - **Después de capturar** (ventana de inicio): abrir en el editor, copiar al portapapeles, guardar automáticamente.
+
+## Novedades 1.0 (ahora se llama SnapNova)
+
+- **Nombre nuevo**: SnapNova. El ejecutable es `SnapNova.exe`; los ajustes y el historial se trasladan solos desde las carpetas del nombre anterior. (La carpeta del proyecto y el espacio de nombres del código siguen llamándose AppShotScreen.)
+- **Biblioteca**: todas las capturas del historial (últimas 200); clic marca, doble clic abre; copiar y eliminar.
+- **Combinar**: marca dos o más capturas en la Biblioteca y únelas en vertical u horizontal.
+- **Lupa** (L): amplía al doble la zona marcada.
+- **Tamaño de la imagen**: ancho en píxeles o porcentaje, en el panel derecho del editor.
+- **Atajos de teclado** personalizables desde la ventana de inicio.
 
 ## Desarrollo
 
@@ -64,7 +73,7 @@ dotnet build src/AppShotScreen
 Prueba automática (captura, anotaciones, efectos, guardado, portapapeles, OCR):
 
 ```bash
-src/AppShotScreen/bin/Debug/net9.0-windows10.0.19041.0/AppShotScreen.exe --selftest salida
+src/AppShotScreen/bin/Debug/net9.0-windows10.0.19041.0/SnapNova.exe --selftest salida
 ```
 
 Publicar un único .exe:

@@ -17,7 +17,7 @@ namespace AppShotScreen;
 public sealed class HomeWindow : Window
 {
     public const string ModeRegion = "region", ModeFull = "full", ModeScroll = "scroll",
-        ModeText = "text", ModePin = "pin", ModeDelay = "delay", ModeOpen = "open", ModeGif = "gif";
+        ModeText = "text", ModePin = "pin", ModeDelay = "delay", ModeOpen = "open", ModeGif = "gif", ModeLibrary = "library", ModeHotkeys = "hotkeys";
 
     /// <summary>El usuario eligió un modo de captura (uno de los Mode*).</summary>
     public event Action<string>? ModeRequested;
@@ -45,7 +45,7 @@ public sealed class HomeWindow : Window
 
     public HomeWindow(Settings? settings = null)
     {
-        Title = "APPSHOTACREEN";
+        Title = "SnapNova";
         Icon = App.AppIconImage;
         Width = 860;
         Height = 760;
@@ -71,20 +71,25 @@ public sealed class HomeWindow : Window
         DockPanel.SetDock(logo, Dock.Left);
         header.Children.Add(logo);
         var titles = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        titles.Children.Add(new TextBlock { Text = "APPSHOTACREEN", FontSize = 22, FontWeight = FontWeights.Bold });
-        titles.Children.Add(new TextBlock { Text = "Captura, anota y comparte en segundos", FontSize = 13, Foreground = Res("TextDim"), Margin = new Thickness(0, 2, 0, 0) });
+        titles.Children.Add(new TextBlock { Text = "SnapNova", FontSize = 22, FontWeight = FontWeights.Bold });
+        titles.Children.Add(new TextBlock { Text = "Captura. Explica. Comparte.", FontSize = 13, Foreground = Res("TextDim"), Margin = new Thickness(0, 2, 0, 0) });
+        var keys = LinkButton("Atajos de teclado", () => ModeRequested?.Invoke(ModeHotkeys));
+        keys.VerticalAlignment = VerticalAlignment.Center;
+        DockPanel.SetDock(keys, Dock.Right);
+        header.Children.Add(keys);
         header.Children.Add(titles);
+        string Hk(string id) => settings == null ? Hotkeys.Display(Hotkeys.Defaults[id]) : Hotkeys.Display(Hotkeys.Get(settings, id));
         root.Children.Add(header);
 
         // ── Modos de captura ──
         root.Children.Add(SectionTitle("NUEVA CAPTURA"));
         var cards = new WrapPanel { Margin = new Thickness(-6, 4, -6, 8) };
-        cards.Children.Add(Card("IcoRegion", "Región o ventana", "Impr Pant", ModeRegion, primary: true));
-        cards.Children.Add(Card("IcoScroll", "Desplazamiento", "Ctrl+Shift+D", ModeScroll));
-        cards.Children.Add(Card("IcoScreen", "Pantalla completa", "Ctrl+Shift+F", ModeFull));
-        cards.Children.Add(Card("IcoGif", "Grabar GIF", "Ctrl+Alt+G", ModeGif));
-        cards.Children.Add(Card("IcoOcr", "Copiar texto", "Ctrl+Alt+T", ModeText));
-        cards.Children.Add(Card("IcoPin", "Capturar y fijar", "Ctrl+Alt+P", ModePin));
+        cards.Children.Add(Card("IcoRegion", "Región o ventana", Hk(Hotkeys.Region), ModeRegion, primary: true));
+        cards.Children.Add(Card("IcoScroll", "Desplazamiento", Hk(Hotkeys.Scroll), ModeScroll));
+        cards.Children.Add(Card("IcoScreen", "Pantalla completa", Hk(Hotkeys.Full), ModeFull));
+        cards.Children.Add(Card("IcoGif", "Grabar GIF", Hk(Hotkeys.Gif), ModeGif));
+        cards.Children.Add(Card("IcoOcr", "Copiar texto", Hk(Hotkeys.Text), ModeText));
+        cards.Children.Add(Card("IcoPin", "Capturar y fijar", Hk(Hotkeys.Pin), ModePin));
         cards.Children.Add(Card("IcoTimer", "Retardo de 3 s", "Para menús abiertos", ModeDelay));
         root.Children.Add(cards);
 
@@ -109,11 +114,7 @@ public sealed class HomeWindow : Window
         // ── Recientes ──
         var recentHeader = new DockPanel { Margin = new Thickness(0, 14, 0, 6) };
         var open = LinkButton("Abrir imagen…", () => ModeRequested?.Invoke(ModeOpen));
-        var folder = LinkButton("Ver historial", () =>
-        {
-            Directory.CreateDirectory(History.Folder);
-            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{History.Folder}\"") { UseShellExecute = true });
-        });
+        var folder = LinkButton("Biblioteca", () => ModeRequested?.Invoke(ModeLibrary));
         DockPanel.SetDock(open, Dock.Right);
         DockPanel.SetDock(folder, Dock.Right);
         recentHeader.Children.Add(open);

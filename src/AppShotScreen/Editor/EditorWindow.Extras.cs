@@ -22,7 +22,7 @@ public partial class EditorWindow
     private void InitExtras()
     {
         Surface.PreviewMouseLeftButtonDown += Select_PreviewDown;
-        foreach (var rb in new[] { ToolArrow, ToolRect, ToolEllipse, ToolHighlight, ToolPen, ToolText, ToolStep, ToolSpot, ToolBlur, ToolCrop, ToolCallout, ToolStamp })
+        foreach (var rb in new[] { ToolArrow, ToolRect, ToolEllipse, ToolHighlight, ToolPen, ToolText, ToolStep, ToolSpot, ToolBlur, ToolCrop, ToolCallout, ToolStamp, ToolMagnify })
             rb.Checked += (_, _) => Select(null);
         ToolSelect.Checked += (_, _) => Surface.Cursor = Cursors.Arrow;
         ToolSelect.Unchecked += (_, _) => Surface.Cursor = Cursors.Cross;
@@ -188,7 +188,7 @@ public partial class EditorWindow
     /// <summary>Guarda la imagen final en un archivo temporal para poder soltarla en otra aplicación.</summary>
     internal string ExportTempFile()
     {
-        string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "APPSHOTACREEN");
+        string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "SnapNova");
         Directory.CreateDirectory(dir);
         // Limpieza: los temporales de más de un día ya no hacen falta.
         foreach (var old in Directory.GetFiles(dir, "*.png"))

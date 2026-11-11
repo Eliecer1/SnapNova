@@ -45,7 +45,7 @@ public sealed class PinWindow : Window
         ShowInTaskbar = false;
         Topmost = true;
         SizeToContent = SizeToContent.WidthAndHeight;
-        Title = "APPSHOTACREEN - Fijada";
+        Title = "SnapNova - Fijada";
 
         _view = new Image { Source = image, Stretch = Stretch.Fill, SnapsToDevicePixels = true };
         RenderOptions.SetBitmapScalingMode(_view, BitmapScalingMode.HighQuality);

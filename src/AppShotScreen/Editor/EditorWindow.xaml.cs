@@ -14,7 +14,7 @@ namespace AppShotScreen.Editor;
 
 public partial class EditorWindow : Window
 {
-    private enum Tool { Arrow, Rect, Ellipse, Highlight, Pen, Text, Step, Spot, Blur, Crop, Select, Callout, Stamp }
+    private enum Tool { Arrow, Rect, Ellipse, Highlight, Pen, Text, Step, Spot, Blur, Crop, Select, Callout, Stamp, Magnify }
 
     private readonly Settings _settings;
     private readonly UndoStack _undo = new();
@@ -240,6 +240,7 @@ public partial class EditorWindow : Window
         ToolSelect.IsChecked == true ? Tool.Select :
         ToolCallout.IsChecked == true ? Tool.Callout :
         ToolStamp.IsChecked == true ? Tool.Stamp :
+        ToolMagnify.IsChecked == true ? Tool.Magnify :
         Tool.Arrow;
 
     private double Stroke => Thickness.Value;
@@ -314,7 +315,7 @@ public partial class EditorWindow : Window
             Tool.Rect => Annotations.Rectangle(r, _color, Stroke),
             Tool.Ellipse => Annotations.Ellipse(r, _color, Stroke),
             Tool.Highlight => Annotations.Highlight(r, _color),
-            Tool.Blur or Tool.Spot => Annotations.BlurPreview(r),
+            Tool.Blur or Tool.Spot or Tool.Magnify => Annotations.BlurPreview(r),
             Tool.Callout => Annotations.Arrow(p, _start, _color, Stroke),
             _ => null
         };
@@ -351,6 +352,7 @@ public partial class EditorWindow : Window
         _preview = null;
         if (CurrentTool == Tool.Callout) { AddCallout(_start, p); return; }
         if (tooSmall) return;
+        if (CurrentTool == Tool.Magnify) { AddMagnifier(r); return; }
 
         if (CurrentTool == Tool.Spot)
         {
@@ -506,7 +508,7 @@ public partial class EditorWindow : Window
         RadioButton? tool = e.Key switch
         {
             Key.A => ToolArrow, Key.R => ToolRect, Key.E => ToolEllipse, Key.H => ToolHighlight,
-            Key.P => ToolPen, Key.T => ToolText, Key.S => ToolStep, Key.F => ToolSpot, Key.B => ToolBlur, Key.C => ToolCrop, Key.V => ToolSelect, Key.G => ToolCallout,
+            Key.P => ToolPen, Key.T => ToolText, Key.S => ToolStep, Key.F => ToolSpot, Key.B => ToolBlur, Key.C => ToolCrop, Key.V => ToolSelect, Key.G => ToolCallout, Key.L => ToolMagnify,
             _ => null
         };
         if (tool != null) { tool.IsChecked = true; e.Handled = true; }
@@ -591,7 +593,7 @@ public partial class EditorWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "No se pudo extraer el texto:\n" + ex.Message, "APPSHOTACREEN", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "No se pudo extraer el texto:\n" + ex.Message, "SnapNova", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -622,7 +624,7 @@ public partial class EditorWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "No se pudo analizar la imagen:\n" + ex.Message, "APPSHOTACREEN", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, "No se pudo analizar la imagen:\n" + ex.Message, "SnapNova", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

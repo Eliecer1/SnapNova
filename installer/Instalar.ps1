@@ -1,9 +1,9 @@
-﻿# Instalador de APPSHOTACREEN (no requiere permisos de administrador)
+﻿# Instalador de SnapNova (no requiere permisos de administrador)
 $ErrorActionPreference = 'Stop'
-$app    = 'APPSHOTACREEN'
+$app    = 'SnapNova'
 $dest   = Join-Path $env:LOCALAPPDATA "Programs\$app"
-$src    = Join-Path $PSScriptRoot 'AppShotScreen.exe'
-$exe    = Join-Path $dest 'AppShotScreen.exe'
+$src    = Join-Path $PSScriptRoot 'SnapNova.exe'
+$exe    = Join-Path $dest 'SnapNova.exe'
 $menu   = Join-Path ([Environment]::GetFolderPath('Programs')) "$app.lnk"
 $inicio = Join-Path ([Environment]::GetFolderPath('Startup')) "$app.lnk"
 $escrit = Join-Path ([Environment]::GetFolderPath('Desktop')) "$app.lnk"
@@ -11,11 +11,19 @@ $escrit = Join-Path ([Environment]::GetFolderPath('Desktop')) "$app.lnk"
 Write-Host ''
 Write-Host "  Instalando $app..." -ForegroundColor Cyan
 
-if (-not (Test-Path $src)) { throw "No encuentro AppShotScreen.exe junto a este instalador. Descomprime todo el .zip antes de instalar." }
+if (-not (Test-Path $src)) { throw "No encuentro SnapNova.exe junto a este instalador. Descomprime todo el .zip antes de instalar." }
 
 # Si ya está abierta, la cerramos para poder reemplazarla.
-Get-Process AppShotScreen -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process SnapNova -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
+
+# Si estaba instalada con el nombre anterior (APPSHOTACREEN), la quitamos; los ajustes y el historial se conservan.
+$oldName = "APPSHOTACREEN"
+Get-Process AppShotScreen -ErrorAction SilentlyContinue | Stop-Process -Force
+$oldDir = Join-Path (Join-Path $env:LOCALAPPDATA 'Programs') $oldName
+if (Test-Path $oldDir) { Remove-Item $oldDir -Recurse -Force -ErrorAction SilentlyContinue }
+foreach ($f in 'Programs','Startup','Desktop') { $l = Join-Path ([Environment]::GetFolderPath($f)) "$oldName.lnk"; if (Test-Path $l) { Remove-Item $l -Force } }
+Remove-Item (Join-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' $oldName) -Recurse -Force -ErrorAction SilentlyContinue
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 Copy-Item $src $exe -Force
@@ -36,7 +44,7 @@ New-Shortcut $menu
 New-Shortcut $escrit
 Write-Host '  - Acceso directo en el menú Inicio y en el escritorio'
 
-$r = Read-Host '  ¿Iniciar APPSHOTACREEN automáticamente al encender la PC? (S/N)'
+$r = Read-Host '  ¿Iniciar SnapNova automáticamente al encender la PC? (S/N)'
 if ($r -match '^[sSyY]') { New-Shortcut $inicio '--tray'; Write-Host '  - Se iniciará con Windows' }
 elseif (Test-Path $inicio) { Remove-Item $inicio -Force }
 
@@ -44,7 +52,7 @@ elseif (Test-Path $inicio) { Remove-Item $inicio -Force }
 $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$app"
 New-Item -Path $key -Force | Out-Null
 Set-ItemProperty $key DisplayName $app
-Set-ItemProperty $key DisplayVersion '0.3.0'
+Set-ItemProperty $key DisplayVersion '1.0.0'
 Set-ItemProperty $key Publisher $app
 Set-ItemProperty $key DisplayIcon "$exe,0"
 Set-ItemProperty $key InstallLocation $dest

@@ -83,7 +83,7 @@ internal static class SelfTestScroll
             {
                 Height = lineH,
                 Background = i % 2 == 0 ? Brushes.White : new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xFB)),
-                Child = new TextBlock { Text = $"Línea {i}  —  APPSHOTACREEN prueba de desplazamiento #{i * 7919 % 1000}", FontSize = 15, Margin = new Thickness(10, 5, 0, 0) },
+                Child = new TextBlock { Text = $"Línea {i}  —  SnapNova prueba de desplazamiento #{i * 7919 % 1000}", FontSize = 15, Margin = new Thickness(10, 5, 0, 0) },
             });
         }
         var scroller = new ScrollViewer { Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Visible, CanContentScroll = false };

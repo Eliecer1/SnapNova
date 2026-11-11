@@ -9,7 +9,7 @@ public sealed class OcrResultWindow : Window
 {
     public OcrResultWindow(string text)
     {
-        Title = "APPSHOTACREEN - Texto extraído";
+        Title = "SnapNova - Texto extraído";
         Icon = App.AppIconImage;
         Width = 520;
         Height = 420;

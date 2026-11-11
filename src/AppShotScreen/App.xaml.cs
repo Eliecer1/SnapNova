@@ -63,8 +63,8 @@ public partial class App : Application
             return;
         }
 
-        _singleInstance = new Mutex(true, "APPSHOTACREEN_single_instance", out bool isFirst);
-        var showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "APPSHOTACREEN_show_home");
+        _singleInstance = new Mutex(true, "SnapNova_single_instance", out bool isFirst);
+        var showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "SnapNova_show_home");
         if (!isFirst)
         {
             // Ya está abierta: le pedimos a esa copia que muestre su ventana de inicio y salimos.
@@ -79,19 +79,21 @@ public partial class App : Application
 
         DispatcherUnhandledException += (_, ex) =>
         {
-            MessageBox.Show("Ocurrió un error:\n" + ex.Exception.Message, "APPSHOTACREEN", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Ocurrió un error:\n" + ex.Exception.Message, "SnapNova", MessageBoxButton.OK, MessageBoxImage.Error);
             ex.Handled = true;
         };
 
+        Brand.MigrateFromOldName();
         _settings = Settings.Load();
+        Brand.FixSaveFolder(_settings);
         CreateTray();
         string hotkeyInfo = RegisterHotkeys();
 
-        // Modo de prueba / "Abrir con": APPSHOTACREEN.exe --open imagen.png
+        // Modo de prueba / "Abrir con": SnapNova.exe --open imagen.png
         int openIdx = Array.IndexOf(e.Args, "--open");
         if (openIdx >= 0 && openIdx + 1 < e.Args.Length) OpenImageFile(e.Args[openIdx + 1]);
         else if (e.Args.Contains("--capture")) _ = CaptureRegionAsync();
-        else if (e.Args.Contains("--tray")) _tray!.ShowBalloonTip(4000, "APPSHOTACREEN está listo", hotkeyInfo, Forms.ToolTipIcon.Info);
+        else if (e.Args.Contains("--tray")) _tray!.ShowBalloonTip(4000, "SnapNova está listo", hotkeyInfo, Forms.ToolTipIcon.Info);
         else ShowHome(); // inicio normal: la ventana principal; con --tray (arranque con Windows) queda en la bandeja
     }
 
@@ -114,6 +116,8 @@ public partial class App : Application
                     case HomeWindow.ModeGif: _ = CaptureGifAsync(); break;
                     case HomeWindow.ModeDelay: _ = CaptureRegionAsync(TimeSpan.FromSeconds(3)); break;
                     case HomeWindow.ModeOpen: PickAndOpenImage(); break;
+                    case HomeWindow.ModeLibrary: ShowLibrary(); break;
+                    case HomeWindow.ModeHotkeys: ShowHotkeysDialog(); break;
                 }
             };
         }
@@ -193,26 +197,76 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Atajos que Windows rechazó la última vez (normalmente porque otra app ya los usa).</summary>
+    private List<string> _hotkeyFailures = new();
+
     private string RegisterHotkeys()
     {
-        _hotkeys = new HotkeyManager();
+        _hotkeys ??= new HotkeyManager();
+        _hotkeys.UnregisterAll();
+        var actions = new Dictionary<string, Action>
+        {
+            [Hotkeys.Region] = () => _ = CaptureRegionAsync(),
+            [Hotkeys.Region2] = () => _ = CaptureRegionAsync(),
+            [Hotkeys.Full] = () => _ = CaptureFullScreenAsync(),
+            [Hotkeys.Scroll] = () => _ = CaptureScrollingAsync(),
+            [Hotkeys.Text] = () => _ = CaptureTextAsync(),
+            [Hotkeys.Pin] = () => _ = CapturePinAsync(),
+            [Hotkeys.Gif] = () => _ = CaptureGifAsync(),
+        };
         var ok = new List<string>();
-        if (_hotkeys.Register(0, VK_SNAPSHOT, () => _ = CaptureRegionAsync())) ok.Add("Impr Pant = región");
-        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_S, () => _ = CaptureRegionAsync())) ok.Add("Ctrl+Shift+S = región");
-        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_F, () => _ = CaptureFullScreenAsync())) ok.Add("Ctrl+Shift+F = pantalla completa");
-        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_D, () => _ = CaptureScrollingAsync())) ok.Add("Ctrl+Shift+D = con desplazamiento");
-        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_ALT, VK_T, () => _ = CaptureTextAsync())) ok.Add("Ctrl+Alt+T = copiar texto");
-        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_ALT, VK_P, () => _ = CapturePinAsync())) ok.Add("Ctrl+Alt+P = capturar y fijar");
-        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_ALT, VK_G, () => _ = CaptureGifAsync())) ok.Add("Ctrl+Alt+G = grabar GIF");
+        _hotkeyFailures = new List<string>();
+        foreach (var (id, label) in Hotkeys.Actions)
+        {
+            string combo = Hotkeys.Get(_settings, id);
+            if (string.IsNullOrEmpty(combo)) continue; // desactivado por el usuario
+            if (Hotkeys.TryParse(combo, out uint mods, out uint vk) && _hotkeys.Register(mods, vk, actions[id]))
+                ok.Add($"{Hotkeys.Display(combo)} = {label}");
+            else
+                _hotkeyFailures.Add($"{Hotkeys.Display(combo)} ({label})");
+        }
         return ok.Count > 0
             ? string.Join("\n", ok)
             : "No se pudieron registrar atajos (otra app los usa). Usa el icono de la bandeja.";
     }
 
+    private void ShowHotkeysDialog()
+    {
+        // Mientras se editan, los atajos globales se desactivan para que las teclas lleguen al cuadro.
+        _hotkeys?.UnregisterAll();
+        var dlg = new HotkeysWindow(_settings) { Owner = _home is { IsVisible: true } ? _home : null };
+        dlg.ShowDialog();
+        RegisterHotkeys();
+        if (_hotkeyFailures.Count > 0)
+            ToastWindow.Show("Algunos atajos están ocupados por otra app", string.Join(", ", _hotkeyFailures));
+        else if (dlg.Saved)
+            ToastWindow.Show("Atajos actualizados");
+        if (dlg.Saved && _home != null)
+        {
+            // La ventana de inicio muestra los atajos en las tarjetas: la recreamos.
+            _home.Close();
+            ShowHome();
+        }
+    }
+
+    private LibraryWindow? _library;
+
+    private void ShowLibrary()
+    {
+        if (_library == null)
+        {
+            _library = new LibraryWindow(_settings, OpenImageFile, OpenEditor);
+            _library.Closed += (_, _) => _library = null;
+        }
+        _library.Show();
+        if (_library.WindowState == WindowState.Minimized) _library.WindowState = WindowState.Normal;
+        _library.Activate();
+    }
+
     private void CreateTray()
     {
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Abrir APPSHOTACREEN", null, (_, _) => ShowHome());
+        menu.Items.Add("Abrir SnapNova", null, (_, _) => ShowHome());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Capturar región o ventana", null, (_, _) => _ = CaptureRegionAsync());
         menu.Items.Add("Capturar pantalla completa", null, (_, _) => _ = CaptureFullScreenAsync());
@@ -222,7 +276,9 @@ public partial class App : Application
         menu.Items.Add("Grabar GIF animado", null, (_, _) => _ = CaptureGifAsync());
         menu.Items.Add("Capturar región en 3 s", null, (_, _) => _ = CaptureRegionAsync(TimeSpan.FromSeconds(3)));
         menu.Items.Add(new Forms.ToolStripSeparator());
+        menu.Items.Add("Biblioteca de capturas", null, (_, _) => ShowLibrary());
         menu.Items.Add("Abrir imagen en el editor…", null, (_, _) => PickAndOpenImage());
+        menu.Items.Add("Atajos de teclado…", null, (_, _) => ShowHotkeysDialog());
         menu.Items.Add("Abrir carpeta de capturas", null, (_, _) => OpenSaveFolder());
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Salir", null, (_, _) => Shutdown());
@@ -230,7 +286,7 @@ public partial class App : Application
         _tray = new Forms.NotifyIcon
         {
             Icon = LoadTrayIcon(),
-            Text = "APPSHOTACREEN — Impr Pant para capturar",
+            Text = "SnapNova — Impr Pant para capturar",
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -376,7 +432,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            MessageBox.Show("No se pudo abrir la imagen:\n" + ex.Message, "APPSHOTACREEN", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("No se pudo abrir la imagen:\n" + ex.Message, "SnapNova", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

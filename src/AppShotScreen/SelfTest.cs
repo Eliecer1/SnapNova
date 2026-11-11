@@ -14,6 +14,25 @@ namespace AppShotScreen;
 /// </summary>
 internal static class SelfTest
 {
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr GetOpenClipboardWindow();
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+
+    private static string ClipboardHolder()
+    {
+        var names = new HashSet<string>();
+        for (int i = 0; i < 40; i++)
+        {
+            var h = GetOpenClipboardWindow();
+            if (h != IntPtr.Zero)
+            {
+                GetWindowThreadProcessId(h, out uint pid);
+                try { names.Add(System.Diagnostics.Process.GetProcessById((int)pid).ProcessName); } catch { names.Add("pid " + pid); }
+            }
+            Thread.Sleep(25);
+        }
+        return names.Count == 0 ? "(nadie en este momento)" : string.Join(", ", names);
+    }
+
     public static async Task<int> RunAsync(string outDir, bool fast = false)
     {
         Directory.CreateDirectory(outDir);
@@ -81,7 +100,7 @@ internal static class SelfTest
             surface.Children.Add(Annotations.Step(new Point(600, 80), 1, red, 4));
             surface.Children.Add(Annotations.Step(new Point(650, 80), 2, red, 4));
             surface.Children.Add(Annotations.Pixelate(crop, new Rect(400, 300, 200, 100)));
-            var label = new System.Windows.Controls.TextBlock { Text = "Hola APPSHOTACREEN 2026", FontSize = 40, Foreground = Brushes.Black, Background = Brushes.White };
+            var label = new System.Windows.Controls.TextBlock { Text = "Hola SnapNova 2026", FontSize = 40, Foreground = Brushes.Black, Background = Brushes.White };
             System.Windows.Controls.Canvas.SetLeft(label, 40); System.Windows.Controls.Canvas.SetTop(label, 400);
             surface.Children.Add(label);
             editor.UpdateLayout();
@@ -112,13 +131,13 @@ internal static class SelfTest
                 if (has) Ok("copiado al portapapeles");
                 else Fail("el portapapeles no tiene imagen");
             }
-            catch (System.Runtime.InteropServices.COMException) { Fail("portapapeles ocupado por otra aplicación durante la prueba (no es un fallo de la app)"); }
+            catch (System.Runtime.InteropServices.COMException) { Fail("portapapeles ocupado durante la prueba por: " + ClipboardHolder()); }
 
             try
             {
                 string text = await OcrService.RecognizeAsync(rendered);
                 File.WriteAllText(Path.Combine(outDir, "ocr.txt"), text);
-                if (text.Contains("APPSHOTACREEN", StringComparison.OrdinalIgnoreCase)) Ok("OCR reconoció el texto de prueba");
+                if (text.Contains("SnapNova", StringComparison.OrdinalIgnoreCase)) Ok("OCR reconoció el texto de prueba");
                 else Fail("OCR no encontró el texto de prueba (ver ocr.txt)");
             }
             catch (Exception ex) { Fail("OCR: " + ex.Message); }
@@ -127,6 +146,7 @@ internal static class SelfTest
 
             await SelfTestFeatures.RunAsync(outDir, crop, Ok, Fail);
             await SelfTestMore.RunAsync(outDir, crop, Ok, Fail);
+            await SelfTestV1.RunAsync(outDir, Ok, Fail);
             if (!fast) await SelfTestScroll.RunAsync(outDir, Ok, Fail);
         }
         catch (Exception ex)
