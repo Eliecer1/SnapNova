@@ -44,7 +44,7 @@ elseif (Test-Path $inicio) { Remove-Item $inicio -Force }
 $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$app"
 New-Item -Path $key -Force | Out-Null
 Set-ItemProperty $key DisplayName $app
-Set-ItemProperty $key DisplayVersion '0.1.0'
+Set-ItemProperty $key DisplayVersion '0.3.0'
 Set-ItemProperty $key Publisher $app
 Set-ItemProperty $key DisplayIcon "$exe,0"
 Set-ItemProperty $key InstallLocation $dest

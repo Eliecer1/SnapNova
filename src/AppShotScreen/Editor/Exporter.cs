@@ -129,7 +129,12 @@ public static class Exporter
         enc.Frames.Add(BitmapFrame.Create(img));
         enc.Save(png);
         data.SetData("PNG", png);
-        Clipboard.SetDataObject(data, true);
+        // Otra aplicación puede tener el portapapeles abierto un instante: reintentamos unas veces.
+        for (int attempt = 0; ; attempt++)
+        {
+            try { Clipboard.SetDataObject(data, true); return; }
+            catch (System.Runtime.InteropServices.COMException) when (attempt < 25) { Thread.Sleep(120); }
+        }
     }
 
     public static void SavePng(BitmapSource img, string path) => Save(img, path);

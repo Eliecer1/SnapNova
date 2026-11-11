@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -16,7 +17,7 @@ namespace AppShotScreen;
 public sealed class HomeWindow : Window
 {
     public const string ModeRegion = "region", ModeFull = "full", ModeScroll = "scroll",
-        ModeText = "text", ModePin = "pin", ModeDelay = "delay", ModeOpen = "open";
+        ModeText = "text", ModePin = "pin", ModeDelay = "delay", ModeOpen = "open", ModeGif = "gif";
 
     /// <summary>El usuario eligió un modo de captura (uno de los Mode*).</summary>
     public event Action<string>? ModeRequested;
@@ -28,12 +29,26 @@ public sealed class HomeWindow : Window
 
     private static Brush Res(string key) => (Brush)Application.Current.FindResource(key);
 
-    public HomeWindow()
+    private static CheckBox Option(string text, bool value, Action<bool> set, Settings settings)
+    {
+        var cb = new CheckBox
+        {
+            Content = text, IsChecked = value, Style = (Style)Application.Current.FindResource("Switch"), Margin = new Thickness(10, 10, 10, 10),
+        };
+        cb.Click += (_, _) =>
+        {
+            set(cb.IsChecked == true);
+            try { settings.Save(); } catch { /* no crítico */ }
+        };
+        return cb;
+    }
+
+    public HomeWindow(Settings? settings = null)
     {
         Title = "APPSHOTACREEN";
         Icon = App.AppIconImage;
         Width = 860;
-        Height = 700;
+        Height = 760;
         MinWidth = 700;
         MinHeight = 480;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -64,13 +79,32 @@ public sealed class HomeWindow : Window
         // ── Modos de captura ──
         root.Children.Add(SectionTitle("NUEVA CAPTURA"));
         var cards = new WrapPanel { Margin = new Thickness(-6, 4, -6, 8) };
-        cards.Children.Add(Card("IcoRegion", "Región o ventana", "Impr Pant  ·  Ctrl+Shift+S", ModeRegion, primary: true));
-        cards.Children.Add(Card("IcoScroll", "Con desplazamiento", "Ctrl+Shift+D", ModeScroll));
+        cards.Children.Add(Card("IcoRegion", "Región o ventana", "Impr Pant", ModeRegion, primary: true));
+        cards.Children.Add(Card("IcoScroll", "Desplazamiento", "Ctrl+Shift+D", ModeScroll));
         cards.Children.Add(Card("IcoScreen", "Pantalla completa", "Ctrl+Shift+F", ModeFull));
+        cards.Children.Add(Card("IcoGif", "Grabar GIF", "Ctrl+Alt+G", ModeGif));
         cards.Children.Add(Card("IcoOcr", "Copiar texto", "Ctrl+Alt+T", ModeText));
         cards.Children.Add(Card("IcoPin", "Capturar y fijar", "Ctrl+Alt+P", ModePin));
-        cards.Children.Add(Card("IcoTimer", "Región en 3 segundos", "Para menús desplegables", ModeDelay));
+        cards.Children.Add(Card("IcoTimer", "Retardo de 3 s", "Para menús abiertos", ModeDelay));
         root.Children.Add(cards);
+
+        // ── Qué hacer después de capturar ──
+        if (settings != null)
+        {
+            root.Children.Add(new TextBlock
+            {
+                Text = "DESPUÉS DE CAPTURAR", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = Res("TextDim"), Margin = new Thickness(0, 14, 0, 8),
+            });
+            var options = new UniformGrid { Rows = 1 };
+            options.Children.Add(Option("Abrir en el editor", settings.OpenEditorAfterCapture, v => settings.OpenEditorAfterCapture = v, settings));
+            options.Children.Add(Option("Copiar al portapapeles", settings.CopyToClipboardAfterCapture, v => settings.CopyToClipboardAfterCapture = v, settings));
+            options.Children.Add(Option("Guardar automáticamente", settings.AutoSaveAfterCapture, v => settings.AutoSaveAfterCapture = v, settings));
+            root.Children.Add(new Border
+            {
+                Background = Res("Bg1"), BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(8, 4, 8, 4), Child = options,
+            });
+        }
 
         // ── Recientes ──
         var recentHeader = new DockPanel { Margin = new Thickness(0, 14, 0, 6) };
@@ -150,7 +184,7 @@ public sealed class HomeWindow : Window
         var hover = Res("Bg2");
         var card = new Border
         {
-            Width = 240, Margin = new Thickness(6), Padding = new Thickness(18, 16, 18, 16), CornerRadius = new CornerRadius(14),
+            Width = 183, Margin = new Thickness(6), Padding = new Thickness(16, 16, 12, 16), CornerRadius = new CornerRadius(14),
             Background = normal, BorderBrush = Res("Line"), BorderThickness = new Thickness(1), Cursor = Cursors.Hand, Child = stack,
         };
         card.MouseEnter += (_, _) => { card.Background = hover; card.BorderBrush = Res("Accent"); };

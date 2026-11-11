@@ -97,7 +97,7 @@ internal static class SelfTestFeatures
                 "Teléfono: +505 8888 1234",
                 "Tarjeta: 4532 7591 8846 2310",
                 "Gracias por su atención");
-            var editor = new EditorWindow(img, new Settings { SaveFolder = outDir });
+            var editor = new EditorWindow(img, new Settings { Persist = false, SaveFolder = outDir });
             editor.Show();
             editor.UpdateLayout();
             int n = await editor.RedactSensitiveAsync();
@@ -118,7 +118,7 @@ internal static class SelfTestFeatures
 
     private static async Task EditorUiAsync(string outDir, BitmapSource shot, Action<string> ok, Action<string> fail)
     {
-        var editor = new EditorWindow(shot, new Settings { SaveFolder = outDir });
+        var editor = new EditorWindow(shot, new Settings { Persist = false, SaveFolder = outDir });
         editor.Show();
         var surface = (Canvas)editor.FindName("Surface");
         surface.Children.Add(Annotations.Arrow(new Point(60, 60), new Point(280, 190), Brushes.Red, 4));
@@ -150,7 +150,7 @@ internal static class SelfTestFeatures
     {
         int before = PinWindow.OpenCount;
         var small = ScreenCapture.Crop(shot, new Int32Rect(0, 0, Math.Min(320, shot.PixelWidth), Math.Min(200, shot.PixelHeight)));
-        var pin = PinWindow.Show(small, new Settings { SaveFolder = outDir }, new PixelRect(200, 200, small.PixelWidth, small.PixelHeight));
+        var pin = PinWindow.Show(small, new Settings { Persist = false, SaveFolder = outDir }, new PixelRect(200, 200, small.PixelWidth, small.PixelHeight));
         await Task.Delay(500);
         bool shown = pin.IsVisible && pin.Topmost && PinWindow.OpenCount == before + 1;
         pin.Close();
@@ -184,7 +184,7 @@ internal static class SelfTestFeatures
             History.Add(Exporter.Compose(shot, new PresentationStyle { Background = 2, Padding = 48, Radius = 12, Shadow = true }));
             for (int i = 0; i < 40 && History.Recent(10).Count < 2; i++) await Task.Delay(100);
 
-            var home = new HomeWindow();
+            var home = new HomeWindow(new Settings { Persist = false, SaveFolder = outDir });
             home.Show();
             home.RefreshRecent();
             await Task.Delay(400);

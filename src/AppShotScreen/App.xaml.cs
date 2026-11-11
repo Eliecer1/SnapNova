@@ -99,7 +99,7 @@ public partial class App : Application
     {
         if (_home == null)
         {
-            _home = new HomeWindow();
+            _home = new HomeWindow(_settings);
             _home.Closed += (_, _) => _home = null;
             _home.OpenFileRequested += OpenImageFile;
             _home.ModeRequested += mode =>
@@ -111,6 +111,7 @@ public partial class App : Application
                     case HomeWindow.ModeScroll: _ = CaptureScrollingAsync(); break;
                     case HomeWindow.ModeText: _ = CaptureTextAsync(); break;
                     case HomeWindow.ModePin: _ = CapturePinAsync(); break;
+                    case HomeWindow.ModeGif: _ = CaptureGifAsync(); break;
                     case HomeWindow.ModeDelay: _ = CaptureRegionAsync(TimeSpan.FromSeconds(3)); break;
                     case HomeWindow.ModeOpen: PickAndOpenImage(); break;
                 }
@@ -202,6 +203,7 @@ public partial class App : Application
         if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_SHIFT, VK_D, () => _ = CaptureScrollingAsync())) ok.Add("Ctrl+Shift+D = con desplazamiento");
         if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_ALT, VK_T, () => _ = CaptureTextAsync())) ok.Add("Ctrl+Alt+T = copiar texto");
         if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_ALT, VK_P, () => _ = CapturePinAsync())) ok.Add("Ctrl+Alt+P = capturar y fijar");
+        if (_hotkeys.Register(Native.MOD_CONTROL | Native.MOD_ALT, VK_G, () => _ = CaptureGifAsync())) ok.Add("Ctrl+Alt+G = grabar GIF");
         return ok.Count > 0
             ? string.Join("\n", ok)
             : "No se pudieron registrar atajos (otra app los usa). Usa el icono de la bandeja.";
@@ -217,6 +219,7 @@ public partial class App : Application
         menu.Items.Add("Captura con desplazamiento", null, (_, _) => _ = CaptureScrollingAsync());
         menu.Items.Add("Copiar texto de la pantalla", null, (_, _) => _ = CaptureTextAsync());
         menu.Items.Add("Capturar y fijar en pantalla", null, (_, _) => _ = CapturePinAsync());
+        menu.Items.Add("Grabar GIF animado", null, (_, _) => _ = CaptureGifAsync());
         menu.Items.Add("Capturar región en 3 s", null, (_, _) => _ = CaptureRegionAsync(TimeSpan.FromSeconds(3)));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Abrir imagen en el editor…", null, (_, _) => PickAndOpenImage());
@@ -324,13 +327,20 @@ public partial class App : Application
         {
             try { Exporter.CopyToClipboard(shot); } catch { /* portapapeles ocupado: no es crítico */ }
         }
-        if (_settings.OpenEditorAfterCapture) OpenEditor(shot);
-        else
+        string? saved = null;
+        if (_settings.AutoSaveAfterCapture)
         {
-            string path = _settings.NextFilePath();
-            Exporter.SavePng(shot, path);
-            _tray?.ShowBalloonTip(2500, "Captura guardada", path, Forms.ToolTipIcon.Info);
+            try { saved = _settings.NextFilePath(); Exporter.SavePng(shot, saved); }
+            catch (Exception ex) { saved = null; ToastWindow.Show("No se pudo guardar la captura", ex.Message); }
         }
+        if (_settings.OpenEditorAfterCapture) OpenEditor(shot);
+
+        // Sin editor, avisamos de lo que pasó con la captura para que no parezca que no hizo nada.
+        if (saved != null && !_settings.OpenEditorAfterCapture)
+            ToastWindow.Show("Captura guardada", Path.GetFileName(saved) + (_settings.CopyToClipboardAfterCapture ? "  ·  también copiada" : ""));
+        else if (!_settings.OpenEditorAfterCapture)
+            ToastWindow.Show(_settings.CopyToClipboardAfterCapture ? "Captura copiada al portapapeles" : "Captura guardada en el historial",
+                "Ábrela desde la ventana de inicio si quieres editarla.");
     }
 
     private void OpenEditor(BitmapSource image)

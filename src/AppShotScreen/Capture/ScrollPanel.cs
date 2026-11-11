@@ -60,7 +60,7 @@ public sealed class ScrollPanelWindow : Window
 
     private bool _autoOn;
 
-    public ScrollPanelWindow(PixelRect region)
+    public ScrollPanelWindow(PixelRect region, bool recording = false)
     {
         _region = region;
         WindowStyle = WindowStyle.None;
@@ -94,6 +94,13 @@ public sealed class ScrollPanelWindow : Window
         row.Children.Add(_auto);
         row.Children.Add(cancel);
         row.Children.Add(stop);
+        if (recording)
+        {
+            // Modo grabación de GIF: mismo panel, sin el botón Auto.
+            _auto.Visibility = Visibility.Collapsed;
+            _status.Text = "● Preparando grabación…";
+            _status.MinWidth = 200;
+        }
         Content = new Border
         {
             BorderBrush = new SolidColorBrush(Color.FromRgb(0x3D, 0x3D, 0x45)),

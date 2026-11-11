@@ -47,6 +47,14 @@ Las capturas se guardan en `Imágenes\APPSHOTACREEN`. Las preferencias están en
 
 Pruebas rápidas (sin las de desplazamiento): `AppShotScreen.exe --selftest salida --fast`
 
+## Novedades 0.3
+
+- **Grabar GIF** (Ctrl+Alt+G): graba una zona con el puntero, hasta 60 s; Detener y guardar o Esc. Se guarda en la carpeta de capturas.
+- **Seleccionar** (V): mueve cualquier anotación; Supr la borra.
+- **Globo de texto** (G) y **sellos** (panel derecho): correcto, incorrecto, atención, destacado, información, duda.
+- **Arrastrar**: mantén pulsado el botón y suelta la imagen en WhatsApp, Word, un correo o una carpeta.
+- **Después de capturar** (ventana de inicio): abrir en el editor, copiar al portapapeles, guardar automáticamente.
+
 ## Desarrollo
 
 ```bash

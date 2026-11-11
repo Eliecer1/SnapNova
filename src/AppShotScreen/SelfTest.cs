@@ -32,7 +32,7 @@ internal static class SelfTest
             var crop = ScreenCapture.Crop(full, new Int32Rect(0, 0, Math.Min(800, full.PixelWidth), Math.Min(500, full.PixelHeight)));
             Ok($"recorte {crop.PixelWidth}x{crop.PixelHeight}");
 
-            var editor = new EditorWindow(crop, new Settings { SaveFolder = outDir });
+            var editor = new EditorWindow(crop, new Settings { Persist = false, SaveFolder = outDir });
             editor.Show();
             editor.UpdateLayout();
             var surface = (System.Windows.Controls.Canvas)editor.FindName("Surface");
@@ -104,9 +104,15 @@ internal static class SelfTest
             Exporter.Save(withFx, Path.Combine(outDir, "3_efectos.jpg"));
             Ok("guardado PNG y JPG");
 
-            Exporter.CopyToClipboard(rendered);
-            if (Clipboard.ContainsImage()) Ok("copiado al portapapeles");
-            else Fail("el portapapeles no tiene imagen");
+            try
+            {
+                Exporter.CopyToClipboard(rendered);
+                bool has = false;
+                for (int i = 0; i < 10 && !has; i++) { try { has = Clipboard.ContainsImage(); } catch { await Task.Delay(150); } }
+                if (has) Ok("copiado al portapapeles");
+                else Fail("el portapapeles no tiene imagen");
+            }
+            catch (System.Runtime.InteropServices.COMException) { Fail("portapapeles ocupado por otra aplicación durante la prueba (no es un fallo de la app)"); }
 
             try
             {
@@ -120,6 +126,7 @@ internal static class SelfTest
             editor.Close();
 
             await SelfTestFeatures.RunAsync(outDir, crop, Ok, Fail);
+            await SelfTestMore.RunAsync(outDir, crop, Ok, Fail);
             if (!fast) await SelfTestScroll.RunAsync(outDir, Ok, Fail);
         }
         catch (Exception ex)

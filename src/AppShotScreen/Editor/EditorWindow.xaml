@@ -1,7 +1,7 @@
 <Window x:Class="AppShotScreen.Editor.EditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="APPSHOTACREEN" Width="1240" Height="800" MinWidth="900" MinHeight="560"
+        Title="APPSHOTACREEN" Width="1280" Height="820" MinWidth="980" MinHeight="700"
         WindowStartupLocation="CenterScreen" Background="{StaticResource Bg0}" FontFamily="Segoe UI"
         Foreground="{StaticResource Text}" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Grid>
@@ -40,6 +40,9 @@
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Style="{StaticResource GhostButton}" Tag="{StaticResource IcoFolder}" ToolTip="Abrir carpeta de capturas" Click="OpenFolder_Click" />
+                    <Button Style="{StaticResource GhostButton}" Tag="{StaticResource IcoDrag}" Content="Arrastrar" Cursor="SizeAll" Click="DragOut_Click"
+                            PreviewMouseLeftButtonDown="DragOut_Down" PreviewMouseMove="DragOut_Move"
+                            ToolTip="Mantén pulsado y arrastra la imagen a WhatsApp, Word, un correo o una carpeta" />
                     <Button Style="{StaticResource GhostButton}" Tag="{StaticResource IcoPin}" Content="Fijar" ToolTip="Fija la imagen flotando sobre las demás ventanas" Click="Pin_Click" />
                     <Button Style="{StaticResource GhostButton}" Content="Guardar como…" Click="SaveAs_Click" />
                     <Button Style="{StaticResource SoftButton}" Tag="{StaticResource IcoSave}" Content="Guardar" ToolTip="Ctrl+S" Click="Save_Click" />
@@ -58,13 +61,17 @@
             <!-- ═════════ Herramientas ═════════ -->
             <Border Grid.Column="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
                 <StackPanel Margin="0,10" HorizontalAlignment="Center">
+                    <RadioButton x:Name="ToolSelect" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoSelect}" ToolTip="Seleccionar y mover anotaciones (V). Supr las borra." />
+                    <Rectangle Height="1" Width="28" Fill="{StaticResource Line}" Margin="0,6" />
                     <RadioButton x:Name="ToolArrow" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoArrow}" IsChecked="True" ToolTip="Flecha (A)" />
                     <RadioButton x:Name="ToolRect" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoRect}" ToolTip="Rectángulo (R)" />
                     <RadioButton x:Name="ToolEllipse" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoEllipse}" ToolTip="Elipse (E)" />
                     <RadioButton x:Name="ToolHighlight" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoHighlight}" ToolTip="Resaltador (H)" />
                     <RadioButton x:Name="ToolPen" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoPen}" ToolTip="Lápiz (P)" />
                     <RadioButton x:Name="ToolText" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoText}" ToolTip="Texto (T)" />
+                    <RadioButton x:Name="ToolCallout" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoCallout}" ToolTip="Globo de texto (G): arrastra desde lo que señalas hasta donde va el globo" />
                     <RadioButton x:Name="ToolStep" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoStep}" ToolTip="Pasos numerados (S)" />
+                    <RadioButton x:Name="ToolStamp" Style="{StaticResource ToolButton}" Visibility="Collapsed" />
                     <Rectangle Height="1" Width="28" Fill="{StaticResource Line}" Margin="0,8" />
                     <RadioButton x:Name="ToolSpot" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoSpot}" ToolTip="Foco: oscurece todo menos la zona marcada (F)" />
                     <RadioButton x:Name="ToolBlur" Style="{StaticResource ToolButton}" Tag="{StaticResource IcoPixel}" ToolTip="Pixelar / ocultar datos (B)" />
@@ -154,6 +161,11 @@
 
                         <Rectangle Height="1" Fill="{StaticResource Line}" Margin="0,20" />
 
+                        <TextBlock Text="SELLOS" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextDim}" />
+                        <WrapPanel x:Name="StampButtons" Margin="-2,10,-2,0" />
+
+                        <Rectangle Height="1" Fill="{StaticResource Line}" Margin="0,20" />
+
                         <TextBlock Text="ACCIONES INTELIGENTES" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextDim}" />
                         <Button Style="{StaticResource SoftButton}" Tag="{StaticResource IcoShield}" Content="Ocultar datos sensibles" Click="SmartRedact_Click"
                                 HorizontalContentAlignment="Left" Margin="0,12,0,0" Height="40"
@@ -162,7 +174,7 @@
                                 Margin="0,8,0,0" Height="40" ToolTip="Reconoce el texto de la imagen y lo copia" />
 
                         <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextDim}" FontSize="11.5" Margin="0,18,0,0" LineHeight="17"
-                                   Text="Clic derecho sobre una anotación para eliminarla. Esc cierra el editor." />
+                                   Text="Con la herramienta Seleccionar (V) mueves cualquier anotación; Supr o clic derecho la elimina. Esc cierra el editor." />
                     </StackPanel>
                 </ScrollViewer>
             </Border>

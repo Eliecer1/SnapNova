@@ -14,7 +14,7 @@ namespace AppShotScreen.Editor;
 
 public partial class EditorWindow : Window
 {
-    private enum Tool { Arrow, Rect, Ellipse, Highlight, Pen, Text, Step, Spot, Blur, Crop }
+    private enum Tool { Arrow, Rect, Ellipse, Highlight, Pen, Text, Step, Spot, Blur, Crop, Select, Callout, Stamp }
 
     private readonly Settings _settings;
     private readonly UndoStack _undo = new();
@@ -64,6 +64,7 @@ public partial class EditorWindow : Window
         Surface.MouseMove += Surface_Move;
         Surface.MouseLeftButtonUp += Surface_Up;
         Surface.MouseRightButtonUp += Surface_RightClick;
+        InitExtras();
         PreviewKeyDown += OnKeys;
         Loaded += (_, _) => { _loaded = true; ApplyPresentation(); FitIfLarger(); };
         Closing += (_, _) => SaveToolPrefs();
@@ -236,6 +237,9 @@ public partial class EditorWindow : Window
         ToolSpot.IsChecked == true ? Tool.Spot :
         ToolBlur.IsChecked == true ? Tool.Blur :
         ToolCrop.IsChecked == true ? Tool.Crop :
+        ToolSelect.IsChecked == true ? Tool.Select :
+        ToolCallout.IsChecked == true ? Tool.Callout :
+        ToolStamp.IsChecked == true ? Tool.Stamp :
         Tool.Arrow;
 
     private double Stroke => Thickness.Value;
@@ -256,6 +260,10 @@ public partial class EditorWindow : Window
 
         switch (CurrentTool)
         {
+            case Tool.Stamp:
+                AddStamp(_stampKind, p);
+                e.Handled = true;
+                return;
             case Tool.Text:
                 AddText(p);
                 e.Handled = true;
@@ -284,6 +292,7 @@ public partial class EditorWindow : Window
 
     private void Surface_Move(object sender, MouseEventArgs e)
     {
+        if (HandleSelectMove(e)) return;
         if (!_dragging) return;
         var p = ClampToSurface(e.GetPosition(Surface));
         var r = new Rect(_start, p);
@@ -306,6 +315,7 @@ public partial class EditorWindow : Window
             Tool.Ellipse => Annotations.Ellipse(r, _color, Stroke),
             Tool.Highlight => Annotations.Highlight(r, _color),
             Tool.Blur or Tool.Spot => Annotations.BlurPreview(r),
+            Tool.Callout => Annotations.Arrow(p, _start, _color, Stroke),
             _ => null
         };
         if (_preview != null) Surface.Children.Add(_preview);
@@ -313,6 +323,7 @@ public partial class EditorWindow : Window
 
     private void Surface_Up(object sender, MouseButtonEventArgs e)
     {
+        if (HandleSelectUp(e)) return;
         if (!_dragging) return;
         _dragging = false;
         Surface.ReleaseMouseCapture();
@@ -338,6 +349,7 @@ public partial class EditorWindow : Window
 
         if (_preview != null) Surface.Children.Remove(_preview);
         _preview = null;
+        if (CurrentTool == Tool.Callout) { AddCallout(_start, p); return; }
         if (tooSmall) return;
 
         if (CurrentTool == Tool.Spot)
@@ -489,10 +501,12 @@ public partial class EditorWindow : Window
         if (ctrl && e.Key == Key.C) { Copy_Click(this, e); e.Handled = true; return; }
         if (ctrl) return;
 
+        if (e.Key == Key.Delete && DeleteSelected()) { e.Handled = true; return; }
+
         RadioButton? tool = e.Key switch
         {
             Key.A => ToolArrow, Key.R => ToolRect, Key.E => ToolEllipse, Key.H => ToolHighlight,
-            Key.P => ToolPen, Key.T => ToolText, Key.S => ToolStep, Key.F => ToolSpot, Key.B => ToolBlur, Key.C => ToolCrop,
+            Key.P => ToolPen, Key.T => ToolText, Key.S => ToolStep, Key.F => ToolSpot, Key.B => ToolBlur, Key.C => ToolCrop, Key.V => ToolSelect, Key.G => ToolCallout,
             _ => null
         };
         if (tool != null) { tool.IsChecked = true; e.Handled = true; }
@@ -516,8 +530,15 @@ public partial class EditorWindow : Window
 
     private void Copy_Click(object sender, RoutedEventArgs e)
     {
-        Exporter.CopyToClipboard(RenderFinal());
-        Flash("Copiado al portapapeles");
+        try
+        {
+            Exporter.CopyToClipboard(RenderFinal());
+            Flash("Copiado al portapapeles");
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            Flash("Otra aplicación tiene ocupado el portapapeles. Inténtalo de nuevo.");
+        }
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)

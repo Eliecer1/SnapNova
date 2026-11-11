@@ -16,6 +16,7 @@ Atajos:
   Ctrl+Shift+D              Captura con desplazamiento
   Ctrl+Alt+T                Copiar el texto de una zona (OCR)
   Ctrl+Alt+P                Capturar y fijar en pantalla
+  Ctrl+Alt+G                Grabar una zona como GIF animado
 
 Para desinstalar: Configuración > Aplicaciones > Aplicaciones instaladas > APPSHOTACREEN > Desinstalar.
 

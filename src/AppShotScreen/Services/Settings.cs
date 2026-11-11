@@ -9,8 +9,13 @@ public sealed class Settings
     public string SaveFolder { get; set; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "APPSHOTACREEN");
 
+    /// <summary>false en las pruebas automáticas, para que no toquen las preferencias reales del usuario.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Persist { get; set; } = true;
+
     public bool CopyToClipboardAfterCapture { get; set; } = true;
     public bool OpenEditorAfterCapture { get; set; } = true;
+    public bool AutoSaveAfterCapture { get; set; } = false;
     public string FileNamePattern { get; set; } = "Captura_{0:yyyy-MM-dd_HH-mm-ss}";
 
     // Efectos al exportar
@@ -51,6 +56,7 @@ public sealed class Settings
 
     public void Save()
     {
+        if (!Persist) return;
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(this, JsonOpts));
     }
