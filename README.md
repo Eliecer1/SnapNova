@@ -3,6 +3,10 @@
 App de capturas de pantalla para Windows (C# · .NET 9 · WPF), inspirada en el flujo de Snagit:
 capturar → anotar → copiar/guardar.
 
+## Descargar
+
+Instalador para Windows 10/11: [`descargas/SnapNova-1.0-instalador.zip`](descargas/SnapNova-1.0-instalador.zip). Descomprime todo y ejecuta `Instalar.cmd`. No necesita .NET ni permisos de administrador.
+
 ## Usar
 
 1. Ejecuta `dist\SnapNova.exe`. Aparece un icono azul en la bandeja del sistema, junto al reloj.

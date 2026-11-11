@@ -6,3 +6,6 @@ dist/
 installer/build/
 installer/pkg/
 installer/*.zip
+
+# Material de vídeo y pruebas locales (no forma parte de la app)
+video/
