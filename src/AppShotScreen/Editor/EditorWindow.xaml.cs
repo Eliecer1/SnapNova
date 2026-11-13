@@ -587,9 +587,11 @@ public partial class EditorWindow : Window
                 Flash("No se encontró texto");
                 return;
             }
-            Clipboard.SetText(text);
-            Flash("Texto copiado al portapapeles");
-            new OcrResultWindow(text) { Owner = this }.Show();
+            // El texto ya está reconocido: si el portapapeles está ocupado no es un error de extracción,
+            // se muestra igual y se puede copiar desde la ventana.
+            bool copied = await ClipboardHelper.TrySetTextAsync(text);
+            Flash(copied ? "Texto copiado al portapapeles" : "Texto extraído (el portapapeles estaba ocupado: cópialo desde la ventana)");
+            new OcrResultWindow(text, copied) { Owner = this }.Show();
         }
         catch (Exception ex)
         {

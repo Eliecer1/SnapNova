@@ -129,12 +129,9 @@ public static class Exporter
         enc.Frames.Add(BitmapFrame.Create(img));
         enc.Save(png);
         data.SetData("PNG", png);
-        // Otra aplicación puede tener el portapapeles abierto un instante: reintentamos unas veces.
-        for (int attempt = 0; ; attempt++)
-        {
-            try { Clipboard.SetDataObject(data, true); return; }
-            catch (System.Runtime.InteropServices.COMException) when (attempt < 25) { Thread.Sleep(120); }
-        }
+        // Otra aplicación puede tener el portapapeles abierto un instante: reintentamos unos segundos.
+        if (!Services.ClipboardHelper.TrySetData(data))
+            throw new System.Runtime.InteropServices.COMException("El portapapeles está ocupado por otra aplicación.", unchecked((int)0x800401D0));
     }
 
     public static void SavePng(BitmapSource img, string path) => Save(img, path);

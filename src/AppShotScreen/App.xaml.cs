@@ -145,8 +145,7 @@ public partial class App : Application
 
         if (overlay.PickedColor is { } color)
         {
-            try { Clipboard.SetText(color); } catch { /* portapapeles ocupado */ }
-            ToastWindow.Show("Color copiado", color);
+            ToastWindow.Show(await ClipboardHelper.TrySetTextAsync(color) ? "Color copiado" : "No se pudo copiar (portapapeles ocupado)", color);
         }
         return overlay;
     }
@@ -166,8 +165,15 @@ public partial class App : Application
                 ToastWindow.Show("No se encontró texto", "Prueba con una zona más grande o con letras más nítidas.");
                 return;
             }
-            Clipboard.SetText(text);
-            ToastWindow.Show("Texto copiado al portapapeles", text.Replace(Environment.NewLine, " "));
+            if (await ClipboardHelper.TrySetTextAsync(text))
+            {
+                ToastWindow.Show("Texto copiado al portapapeles", text.Replace(Environment.NewLine, " "));
+            }
+            else
+            {
+                // Otra app tiene el portapapeles ocupado: mostramos el texto para copiarlo a mano.
+                new OcrResultWindow(text, copied: false).Show();
+            }
         }
         catch (Exception ex)
         {

@@ -14,9 +14,86 @@ internal static class SelfTestV1
 {
     public static async Task RunAsync(string outDir, Action<string> ok, Action<string> fail)
     {
+        await ClipboardBusyAsync(ok, fail);
         await LibraryAsync(outDir, ok, fail);
         HotkeysTest(outDir, ok, fail);
         await EditorAsync(outDir, ok, fail);
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool OpenClipboard(IntPtr owner);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool CloseClipboard();
+
+    /// <summary>Simula otra app que tiene el portapapeles abierto (el error CLIPBRD_E_CANT_OPEN que vio el usuario).</summary>
+    private static async Task<bool> HoldClipboardAsync(int ms)
+    {
+        // Otro proceso (como haría AnyViewer o un gestor de portapapeles) abre el portapapeles y lo retiene.
+        string flag = Path.Combine(Path.GetTempPath(), $"snapnova_clip_{Guid.NewGuid():N}.txt");
+        string scriptPath = Path.ChangeExtension(flag, ".ps1");
+        File.WriteAllText(scriptPath,
+            "Add-Type -Namespace C -Name U -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool OpenClipboard(IntPtr h); [DllImport(\"user32.dll\")] public static extern bool CloseClipboard();'\n" +
+            "$ok = [C.U]::OpenClipboard([IntPtr]::Zero)\n" +
+            $"Set-Content -Path '{flag}' -Value $ok\n" +
+            $"Start-Sleep -Milliseconds {ms}\n" +
+            "if ($ok) { [void][C.U]::CloseClipboard() }\n");
+        var psi = new System.Diagnostics.ProcessStartInfo("powershell.exe", $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{scriptPath}\"")
+        {
+            CreateNoWindow = true, UseShellExecute = false,
+        };
+        System.Diagnostics.Process.Start(psi);
+        for (int i = 0; i < 100; i++)
+        {
+            if (File.Exists(flag))
+            {
+                await Task.Delay(50);
+                bool ok = File.ReadAllText(flag).Trim() == "True";
+                try { File.Delete(flag); } catch { }
+                return ok;
+            }
+            await Task.Delay(100);
+        }
+        return false;
+    }
+
+    private static async Task ClipboardBusyAsync(Action<string> ok, Action<string> fail)
+    {
+        try
+        {
+            // 1) Ocupado ~1 s: debe esperar y copiar igual.
+            if (!await HoldClipboardAsync(1000)) { fail("portapapeles: no se pudo simular otra app ocupándolo"); return; }
+            string marker = "SnapNova OCR " + Guid.NewGuid().ToString("N")[..8];
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            bool copied = await Task.Run(() =>
+            {
+                bool r = false;
+                var th = new Thread(() => r = ClipboardHelper.TrySetText(marker));
+                th.SetApartmentState(ApartmentState.STA);
+                th.Start();
+                th.Join();
+                return r;
+            });
+            string now = "";
+            for (int i = 0; i < 10 && now != marker; i++) { try { now = Clipboard.GetText(); } catch { await Task.Delay(100); } }
+            bool waited = copied && now == marker && sw.ElapsedMilliseconds >= 500;
+
+            // 2) Ocupado ~5 s: no debe lanzar excepción, solo devolver false, y la ventana de texto debe abrirse igual.
+            await Task.Delay(300);
+            if (!await HoldClipboardAsync(5000)) { fail("portapapeles: no se pudo simular la segunda vez"); return; }
+            var sw2 = System.Diagnostics.Stopwatch.StartNew();
+            bool threw = false, gaveUp = false;
+            try { gaveUp = !await ClipboardHelper.TrySetTextAsync("no debería copiarse"); } catch { threw = true; }
+            sw2.Stop();
+            var win = new Editor.OcrResultWindow("texto reconocido", copied: false);
+            win.Show();
+            bool shown = win.IsVisible;
+            win.Close();
+            await Task.Delay(2200); // deja que se libere
+
+            if (waited && gaveUp && !threw && shown)
+                ok($"portapapeles ocupado: espera y copia ({sw.ElapsedMilliseconds} ms); si sigue ocupado no da error y muestra el texto");
+            else
+                fail($"portapapeles ocupado: esperó y copió={waited} (copiado={copied}, {sw.ElapsedMilliseconds} ms, texto='{now}'), se rindió sin error={gaveUp && !threw} (rendido={gaveUp}, excepción={threw}, {sw2.ElapsedMilliseconds} ms), ventana={shown}");
+        }
+        catch (Exception ex) { fail("portapapeles ocupado: " + ex.Message); }
     }
 
     private static BitmapSource Solid(int w, int h, byte r, byte g, byte b)
