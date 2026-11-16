@@ -236,7 +236,7 @@ public sealed class LibraryWindow : Window
                 Brand.Name, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         foreach (var file in _selected.ToList())
         {
-            try { File.Delete(file); } catch { /* en uso: se queda */ }
+            try { File.Delete(file); EditStore.Delete(file); } catch { /* en uso: se queda */ }
         }
         _selected.Clear();
         _ = ReloadAsync();

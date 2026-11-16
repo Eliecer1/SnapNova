@@ -14,7 +14,7 @@
     <AssemblyName>SnapNova</AssemblyName>
     <RootNamespace>AppShotScreen</RootNamespace>
     <Product>SnapNova</Product>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
   </PropertyGroup>
 
   <!-- WinForms y WPF comparten nombres; dejamos WPF como predeterminado. -->

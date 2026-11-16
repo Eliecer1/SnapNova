@@ -20,11 +20,12 @@ public partial class EditorWindow
     {
         public string? FilePath;               // archivo del historial (puede no existir aún)
         public BitmapSource? Image;            // imagen base (null = aún sin cargar del disco)
+        public BitmapSource? Original;         // imagen tal como está en el archivo (para saber si se recortó)
         public List<UIElement> Annotations = new();
         public List<Rect> SpotHoles = new();
         public (IUndoAction[] Undo, IUndoAction[] Redo) UndoState = (Array.Empty<IUndoAction>(), Array.Empty<IUndoAction>());
         public Border? Tile;
-        public bool Edited => Annotations.Count > 0 || UndoState.Undo.Length > 0;
+        public bool Edited => Image == null ? EditStore.Exists(FilePath) : Annotations.Count > 0 || !ReferenceEquals(Image, Original);
     }
 
     private readonly List<TrayDoc> _docs = new();
@@ -36,9 +37,17 @@ public partial class EditorWindow
 
     private void InitTray(BitmapSource first, string? historyPath)
     {
-        var doc = new TrayDoc { FilePath = historyPath, Image = first };
+        var doc = new TrayDoc { FilePath = historyPath, Image = first, Original = first };
         _docs.Add(doc);
         _current = doc;
+        if (ApplySavedEdits(doc)) // si esta imagen ya tenía anotaciones guardadas, las ponemos en el lienzo
+        {
+            if (!ReferenceEquals(doc.Image, first)) SetBase(doc.Image!);
+            foreach (var el in doc.Annotations) Surface.Children.Add(el);
+            _spotLayer = doc.Annotations.OfType<System.Windows.Shapes.Path>().FirstOrDefault(p => Equals(p.Tag, Annotations.SpotlightTag));
+            _spotHoles.AddRange(doc.SpotHoles);
+        }
+        Closing += (_, _) => { if (_current != null) { Keyboard.ClearFocus(); PersistCurrent(null); } };
 
         // Completamos con capturas anteriores del historial (sin cargarlas aún).
         foreach (var file in History.Recent(TrayLimit))
@@ -66,7 +75,8 @@ public partial class EditorWindow
     /// <summary>Llega una captura nueva: se pone la primera de la bandeja y (si se pide) se abre.</summary>
     public void AddCapture(BitmapSource image, string? historyPath = null, bool activate = true)
     {
-        var doc = new TrayDoc { FilePath = historyPath, Image = image };
+        var doc = new TrayDoc { FilePath = historyPath, Image = image, Original = image };
+        ApplySavedEdits(doc);
         _docs.Insert(0, doc);
         TrayPanel.Children.Insert(0, BuildTile(doc));
         // Si el historial ya la trajo (por la carga inicial), quitamos el duplicado.
@@ -100,7 +110,8 @@ public partial class EditorWindow
             try
             {
                 if (target.FilePath == null || !File.Exists(target.FilePath)) throw new FileNotFoundException();
-                target.Image = ImageTools.Load(target.FilePath);
+                target.Image = target.Original = ImageTools.Load(target.FilePath);
+                ApplySavedEdits(target);
             }
             catch
             {
@@ -137,7 +148,41 @@ public partial class EditorWindow
         d.Annotations = Surface.Children.Cast<UIElement>().Where(c => c != BaseImage).ToList();
         d.SpotHoles = _spotHoles.ToList();
         d.UndoState = _undo.Save();
+        PersistCurrent(null);
         RefreshTile(d);
+    }
+
+    // ───────────── Guardado entre sesiones ─────────────
+
+    /// <summary>Recupera las anotaciones guardadas de otra sesión. Devuelve si había algo.</summary>
+    private bool ApplySavedEdits(TrayDoc d)
+    {
+        if (d.FilePath == null) return false;
+        var saved = EditStore.Load(d.FilePath);
+        if (saved == null) return false;
+        if (saved.Base != null) d.Image = saved.Base;
+        d.Annotations = saved.Annotations;
+        d.SpotHoles = saved.SpotHoles;
+        return true;
+    }
+
+    /// <summary>Guarda en disco las anotaciones de la captura abierta (con su archivo).</summary>
+    internal void PersistCurrent(BitmapSource? rendered)
+    {
+        var d = _current;
+        if (d?.FilePath == null) return;
+        try
+        {
+            var annotations = Surface.Children.Cast<UIElement>().Where(c => c != BaseImage).ToList();
+            bool baseChanged = !ReferenceEquals(_base, d.Original);
+            BitmapSource? thumb = null;
+            if (annotations.Count > 0 || baseChanged) thumb = Thumbnail(rendered ?? Exporter.Render(Surface));
+            EditStore.Save(d.FilePath, baseChanged ? _base : null, annotations, _spotHoles, Surface, thumb);
+        }
+        catch
+        {
+            // Guardar ediciones es un extra: si falla (disco lleno), el editor sigue funcionando.
+        }
     }
 
     // ───────────── Miniaturas ─────────────
@@ -179,6 +224,10 @@ public partial class EditorWindow
         if (d.Image != null)
         {
             img.Source = Thumbnail(d.Image);
+        }
+        else if (d.FilePath != null && img.Source == null && EditStore.LoadThumb(d.FilePath) is { } savedThumb)
+        {
+            img.Source = savedThumb; // miniatura con las anotaciones guardadas
         }
         else if (d.FilePath != null && img.Source == null)
         {
@@ -231,8 +280,10 @@ public partial class EditorWindow
         if (Keyboard.FocusedElement is TextBox) { ScheduleThumbRefresh(); return; }
         try
         {
-            img.Source = Thumbnail(Exporter.Render(Surface));
-            dot.Visibility = _undo.CanUndo || Surface.Children.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+            var rendered = Exporter.Render(Surface);
+            img.Source = Thumbnail(rendered);
+            PersistCurrent(rendered);
+            dot.Visibility = Surface.Children.Count > 1 || !ReferenceEquals(_base, _current.Original) ? Visibility.Visible : Visibility.Collapsed;
         }
         catch { /* la ventana se está cerrando */ }
     }

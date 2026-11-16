@@ -78,6 +78,10 @@ Pruebas rápidas (sin las de desplazamiento): `SnapNova.exe --selftest salida --
 
 - **Un solo editor con bandeja** (como Snagit): las capturas nuevas llegan al editor ya abierto y abajo se ven las recientes. Clic en una miniatura para volver a ella; cada captura conserva sus anotaciones y su deshacer durante la sesión (punto azul = tiene cambios). Ctrl+← / Ctrl+→ para moverse.
 
+## Novedades 1.3
+
+- **Las anotaciones se guardan entre sesiones** (como Snagit): al reabrir una captura desde la bandeja, la Biblioteca o Recientes aparecen sus flechas, textos, pasos, pixelados, foco y recortes, y se pueden seguir editando. La imagen original no se modifica; las ediciones van en `%LOCALAPPDATA%\SnapNova\Historial\ediciones`.
+
 ## Desarrollo
 
 ```bash

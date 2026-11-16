@@ -30,7 +30,7 @@ public static class History
                 Exporter.Save(image, path);
                 foreach (var old in Recent(int.MaxValue).Skip(MaxItems))
                 {
-                    try { File.Delete(old); } catch { /* en uso */ }
+                    try { File.Delete(old); EditStore.Delete(old); } catch { /* en uso */ }
                 }
                 Changed?.Invoke();
             }
