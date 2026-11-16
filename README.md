@@ -68,6 +68,12 @@ Pruebas rápidas (sin las de desplazamiento): `SnapNova.exe --selftest salida --
 - **Tamaño de la imagen**: ancho en píxeles o porcentaje, en el panel derecho del editor.
 - **Atajos de teclado** personalizables desde la ventana de inicio.
 
+## Novedades 1.1
+
+- **Iniciar con Windows**: interruptor en la ventana de inicio y en el menú del icono de la bandeja. Usa el mismo acceso directo que el instalador (`SnapNova.lnk` en la carpeta Inicio, con `--tray`), así que nunca arranca dos veces; si la app cambia de carpeta, el acceso directo se corrige solo.
+- Copiar texto e imágenes usa la API básica del portapapeles con reintentos: ya no falla cuando AnyViewer u otra app lo tiene abierto un instante.
+- `SnapNova.exe --copy imagen.png` copia una imagen al portapapeles desde la línea de comandos.
+
 ## Desarrollo
 
 ```bash

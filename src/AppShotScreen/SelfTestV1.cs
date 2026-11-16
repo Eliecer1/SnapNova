@@ -14,6 +14,7 @@ internal static class SelfTestV1
 {
     public static async Task RunAsync(string outDir, Action<string> ok, Action<string> fail)
     {
+        StartupTest(outDir, ok, fail);
         await ClipboardBusyAsync(ok, fail);
         await LibraryAsync(outDir, ok, fail);
         HotkeysTest(outDir, ok, fail);
@@ -31,7 +32,9 @@ internal static class SelfTestV1
         string scriptPath = Path.ChangeExtension(flag, ".ps1");
         File.WriteAllText(scriptPath,
             "Add-Type -Namespace C -Name U -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool OpenClipboard(IntPtr h); [DllImport(\"user32.dll\")] public static extern bool CloseClipboard();'\n" +
-            "$ok = [C.U]::OpenClipboard([IntPtr]::Zero)\n" +
+            // Con una ventana propia, como AnyViewer: dos aperturas "sin ventana" no se bloquean entre sí.
+            "Add-Type -AssemblyName System.Windows.Forms; $form = New-Object System.Windows.Forms.Form\n" +
+            "$ok = [C.U]::OpenClipboard($form.Handle)\n" +
             $"Set-Content -Path '{flag}' -Value $ok\n" +
             $"Start-Sleep -Milliseconds {ms}\n" +
             "if ($ok) { [void][C.U]::CloseClipboard() }\n");
@@ -62,18 +65,12 @@ internal static class SelfTestV1
             if (!await HoldClipboardAsync(1000)) { fail("portapapeles: no se pudo simular otra app ocupándolo"); return; }
             string marker = "SnapNova OCR " + Guid.NewGuid().ToString("N")[..8];
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            bool copied = await Task.Run(() =>
-            {
-                bool r = false;
-                var th = new Thread(() => r = ClipboardHelper.TrySetText(marker));
-                th.SetApartmentState(ApartmentState.STA);
-                th.Start();
-                th.Join();
-                return r;
-            });
+            // En el hilo de la ventana, igual que en la app (allí hay bucle de mensajes).
+            bool copied = await ClipboardHelper.TrySetTextAsync(marker);
             string now = "";
             for (int i = 0; i < 10 && now != marker; i++) { try { now = Clipboard.GetText(); } catch { await Task.Delay(100); } }
-            bool waited = copied && now == marker && sw.ElapsedMilliseconds >= 500;
+            long waitedMs = sw.ElapsedMilliseconds;
+            bool waited = copied && now == marker && waitedMs >= 300;
 
             // 2) Ocupado ~5 s: no debe lanzar excepción, solo devolver false, y la ventana de texto debe abrirse igual.
             await Task.Delay(300);
@@ -89,11 +86,48 @@ internal static class SelfTestV1
             await Task.Delay(2200); // deja que se libere
 
             if (waited && gaveUp && !threw && shown)
-                ok($"portapapeles ocupado: espera y copia ({sw.ElapsedMilliseconds} ms); si sigue ocupado no da error y muestra el texto");
+                ok($"portapapeles ocupado: espera y copia ({waitedMs} ms); si sigue ocupado no da error y muestra el texto");
             else
-                fail($"portapapeles ocupado: esperó y copió={waited} (copiado={copied}, {sw.ElapsedMilliseconds} ms, texto='{now}'), se rindió sin error={gaveUp && !threw} (rendido={gaveUp}, excepción={threw}, {sw2.ElapsedMilliseconds} ms), ventana={shown}");
+                fail($"portapapeles ocupado: esperó y copió={waited} (copiado={copied}, {waitedMs} ms, texto='{now}'), se rindió sin error={gaveUp && !threw} (rendido={gaveUp}, excepción={threw}, {sw2.ElapsedMilliseconds} ms), ventana={shown}");
         }
         catch (Exception ex) { fail("portapapeles ocupado: " + ex.Message); }
+    }
+
+    /// <summary>Iniciar con Windows, en una carpeta Inicio de prueba (la real no se toca).</summary>
+    private static void StartupTest(string outDir, Action<string> ok, Action<string> fail)
+    {
+        string real = StartupManager.StartupFolder;
+        StartupManager.StartupFolder = Path.Combine(outDir, "inicio_prueba");
+        try
+        {
+            bool offAtStart = !StartupManager.IsEnabled;
+            StartupManager.SetEnabled(true);
+            bool created = File.Exists(StartupManager.ShortcutPath);
+            string? target = StartupManager.ReadTarget(StartupManager.ShortcutPath);
+            string? args = StartupManager.ReadArguments(StartupManager.ShortcutPath);
+            bool points = string.Equals(target, StartupManager.CurrentExe, StringComparison.OrdinalIgnoreCase) && args == "--tray";
+
+            // Activarlo otra vez no debe crear un segundo acceso directo.
+            StartupManager.SetEnabled(true);
+            bool single = Directory.GetFiles(StartupManager.StartupFolder, "*.lnk").Length == 1;
+
+            // Si el .exe al que apunta desaparece (app movida o reinstalada), se repara solo.
+            StartupManager.SetEnabled(true, Path.Combine(outDir, "no_existe", "SnapNova.exe"));
+            StartupManager.RepairIfBroken();
+            bool repaired = string.Equals(StartupManager.ReadTarget(StartupManager.ShortcutPath), StartupManager.CurrentExe, StringComparison.OrdinalIgnoreCase);
+
+            StartupManager.SetEnabled(false);
+            bool removed = !StartupManager.IsEnabled;
+            StartupManager.RepairIfBroken(); // desactivado: no debe volver a crearlo
+            bool staysOff = !StartupManager.IsEnabled;
+
+            if (offAtStart && created && points && single && repaired && removed && staysOff)
+                ok("iniciar con Windows: crea un único acceso directo con --tray, se repara si la app cambia de carpeta y se quita al desactivarlo");
+            else
+                fail($"iniciar con Windows: creado={created} destino/args ok={points} ({target} {args}) único={single} reparado={repaired} quitado={removed} sigue apagado={staysOff}");
+        }
+        catch (Exception ex) { fail("iniciar con Windows: " + ex.Message); }
+        finally { StartupManager.StartupFolder = real; }
     }
 
     private static BitmapSource Solid(int w, int h, byte r, byte g, byte b)

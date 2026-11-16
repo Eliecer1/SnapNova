@@ -121,16 +121,8 @@ public static class Exporter
 
     public static void CopyToClipboard(BitmapSource img)
     {
-        // Algunos programas pierden la transparencia; copiamos también como PNG.
-        var data = new DataObject();
-        data.SetImage(img);
-        var png = new MemoryStream();
-        var enc = new PngBitmapEncoder();
-        enc.Frames.Add(BitmapFrame.Create(img));
-        enc.Save(png);
-        data.SetData("PNG", png);
-        // Otra aplicación puede tener el portapapeles abierto un instante: reintentamos unos segundos.
-        if (!Services.ClipboardHelper.TrySetData(data))
+        // Mapa de bits + PNG, con reintentos si otra aplicación tiene el portapapeles abierto.
+        if (!Services.ClipboardHelper.TrySetImage(img))
             throw new System.Runtime.InteropServices.COMException("El portapapeles está ocupado por otra aplicación.", unchecked((int)0x800401D0));
     }
 

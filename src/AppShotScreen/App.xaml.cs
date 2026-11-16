@@ -41,6 +41,15 @@ public partial class App : Application
             return;
         }
 
+        int cpIdx = Array.IndexOf(e.Args, "--copy");
+        if (cpIdx >= 0 && cpIdx + 1 < e.Args.Length)
+        {
+            // SnapNova.exe --copy imagen.png : copia la imagen al portapapeles y termina (código 0 = copiada).
+            bool copied = ClipboardHelper.TrySetImage(ImageTools.Load(e.Args[cpIdx + 1]));
+            Shutdown(copied ? 0 : 1);
+            return;
+        }
+
         int stIdx = Array.IndexOf(e.Args, "--scrolltest");
         if (stIdx >= 0)
         {
@@ -86,6 +95,7 @@ public partial class App : Application
         Brand.MigrateFromOldName();
         _settings = Settings.Load();
         Brand.FixSaveFolder(_settings);
+        StartupManager.RepairIfBroken();
         CreateTray();
         string hotkeyInfo = RegisterHotkeys();
 
@@ -104,6 +114,7 @@ public partial class App : Application
             _home = new HomeWindow(_settings);
             _home.Closed += (_, _) => _home = null;
             _home.OpenFileRequested += OpenImageFile;
+            _home.StartupToggled += SetStartup;
             _home.ModeRequested += mode =>
             {
                 switch (mode)
@@ -286,6 +297,11 @@ public partial class App : Application
         menu.Items.Add("Abrir imagen en el editor…", null, (_, _) => PickAndOpenImage());
         menu.Items.Add("Atajos de teclado…", null, (_, _) => ShowHotkeysDialog());
         menu.Items.Add("Abrir carpeta de capturas", null, (_, _) => OpenSaveFolder());
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        _startupItem = new Forms.ToolStripMenuItem("Iniciar con Windows") { CheckOnClick = false };
+        _startupItem.Click += (_, _) => SetStartup(!StartupManager.IsEnabled);
+        menu.Items.Add(_startupItem);
+        menu.Opening += (_, _) => _startupItem.Checked = StartupManager.IsEnabled;
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Salir", null, (_, _) => Shutdown());
 

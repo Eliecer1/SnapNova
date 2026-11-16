@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using AppShotScreen.Capture;
 using AppShotScreen.Editor;
+using AppShotScreen.Services;
 
 namespace AppShotScreen;
 
@@ -61,5 +62,27 @@ public partial class App
             _hotkeys?.Unregister(escId);
             _capturing = false;
         }
+    }
+}
+
+public partial class App
+{
+    private System.Windows.Forms.ToolStripMenuItem? _startupItem;
+
+    /// <summary>Activa o desactiva "Iniciar con Windows" (desde la ventana de inicio o el menú de la bandeja).</summary>
+    private void SetStartup(bool enabled)
+    {
+        try
+        {
+            bool now = StartupManager.SetEnabled(enabled);
+            ToastWindow.Show(now ? "SnapNova se iniciará con Windows" : "SnapNova ya no se iniciará con Windows",
+                now ? "Arrancará en la bandeja, junto al reloj." : null);
+        }
+        catch (Exception ex)
+        {
+            ToastWindow.Show("No se pudo cambiar el inicio con Windows", ex.Message);
+        }
+        if (_startupItem != null) _startupItem.Checked = StartupManager.IsEnabled;
+        _home?.RefreshStartupSwitch();
     }
 }

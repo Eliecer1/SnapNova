@@ -29,6 +29,23 @@ public sealed class HomeWindow : Window
 
     private static Brush Res(string key) => (Brush)Application.Current.FindResource(key);
 
+    /// <summary>El usuario activó o desactivó "Iniciar con Windows".</summary>
+    public event Action<bool>? StartupToggled;
+    private CheckBox? _startupSwitch;
+
+    /// <summary>Refleja el estado real (por si se cambió desde el menú de la bandeja).</summary>
+    public void RefreshStartupSwitch()
+    {
+        if (_startupSwitch != null) _startupSwitch.IsChecked = StartupManager.IsEnabled;
+    }
+
+    internal void ToggleStartupForTest(bool on)
+    {
+        if (_startupSwitch == null) return;
+        _startupSwitch.IsChecked = on;
+        StartupToggled?.Invoke(on);
+    }
+
     private static CheckBox Option(string text, bool value, Action<bool> set, Settings settings)
     {
         var cb = new CheckBox
@@ -109,6 +126,20 @@ public sealed class HomeWindow : Window
                 Background = Res("Bg1"), BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12),
                 Padding = new Thickness(8, 4, 8, 4), Child = options,
             });
+
+            // ── Inicio con Windows ──
+            var startup = new CheckBox
+            {
+                Content = "Iniciar SnapNova con Windows (queda en la bandeja, junto al reloj)",
+                IsChecked = StartupManager.IsEnabled, Style = (Style)Application.Current.FindResource("Switch"), Margin = new Thickness(10),
+            };
+            _startupSwitch = startup;
+            startup.Click += (_, _) => StartupToggled?.Invoke(startup.IsChecked == true);
+            root.Children.Add(new Border
+            {
+                Background = Res("Bg1"), BorderBrush = Res("Line"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(0, 8, 0, 0), Child = startup,
+            });
         }
 
         // ── Recientes ──
@@ -133,7 +164,7 @@ public sealed class HomeWindow : Window
 
         History.Changed += OnHistoryChanged;
         Closed += (_, _) => History.Changed -= OnHistoryChanged;
-        Activated += (_, _) => RefreshRecent();
+        Activated += (_, _) => { RefreshRecent(); RefreshStartupSwitch(); };
         KeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
         RefreshRecent();
     }
