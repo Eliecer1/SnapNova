@@ -33,7 +33,13 @@ public partial class EditorWindow : Window
     private Path? _spotLayer;
     private readonly List<Rect> _spotHoles = new();
 
-    public EditorWindow(BitmapSource image, Settings settings)
+    /// <param name="historyPath">Archivo del historial de esta captura (para relacionarla con su miniatura en la bandeja).</param>
+    public EditorWindow(BitmapSource image, Settings settings, string? historyPath = null) : this(image, settings, 0)
+    {
+        InitTray(image, historyPath);
+    }
+
+    private EditorWindow(BitmapSource image, Settings settings, int _)
     {
         InitializeComponent();
         Icon = App.AppIconImage;
@@ -58,6 +64,7 @@ public partial class EditorWindow : Window
         ShadowToggle.Click += (_, _) => ApplyPresentation();
         BorderToggle.Click += (_, _) => ApplyPresentation();
         _undo.Changed += UpdateUndoButtons;
+        _undo.Changed += ScheduleThumbRefresh;
         UpdateUndoButtons();
 
         Surface.MouseLeftButtonDown += Surface_Down;
@@ -501,6 +508,8 @@ public partial class EditorWindow : Window
         if (ctrl && e.Key == Key.Z) { _undo.Undo(); e.Handled = true; return; }
         if (ctrl && e.Key == Key.Y) { _undo.Redo(); e.Handled = true; return; }
         if (ctrl && e.Key == Key.C) { Copy_Click(this, e); e.Handled = true; return; }
+        if (ctrl && e.Key == Key.Left) { Step(-1); e.Handled = true; return; }
+        if (ctrl && e.Key == Key.Right) { Step(+1); e.Handled = true; return; }
         if (ctrl) return;
 
         if (e.Key == Key.Delete && DeleteSelected()) { e.Handled = true; return; }

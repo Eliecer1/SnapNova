@@ -1,13 +1,14 @@
 <Window x:Class="AppShotScreen.Editor.EditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SnapNova" Width="1280" Height="820" MinWidth="980" MinHeight="700"
+        Title="SnapNova" Width="1280" Height="900" MinWidth="980" MinHeight="760"
         WindowStartupLocation="CenterScreen" Background="{StaticResource Bg0}" FontFamily="Segoe UI"
         Foreground="{StaticResource Text}" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="56" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ═════════ Barra superior ═════════ -->
@@ -191,5 +192,22 @@
                 </ScrollViewer>
             </Border>
         </Grid>
+
+        <!-- ═════════ Bandeja de capturas (como en Snagit) ═════════ -->
+        <Border Grid.Row="2" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="10,8,10,8">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center" Margin="4,0,10,0" Width="74">
+                    <TextBlock Text="BANDEJA" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextDim}" />
+                    <TextBlock x:Name="TrayCount_Text" FontSize="11.5" Foreground="{StaticResource TextDim}" Margin="0,3,0,6" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource SoftButton}" Content="‹" Width="32" Height="28" Padding="0" Margin="0,0,4,0" Click="TrayPrev_Click" ToolTip="Captura anterior (Ctrl+←)" />
+                        <Button Style="{StaticResource SoftButton}" Content="›" Width="32" Height="28" Padding="0" Margin="0" Click="TrayNext_Click" ToolTip="Captura siguiente (Ctrl+→)" />
+                    </StackPanel>
+                </StackPanel>
+                <ScrollViewer x:Name="TrayScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" PanningMode="HorizontalOnly">
+                    <StackPanel x:Name="TrayPanel" Orientation="Horizontal" Margin="0,0,0,4" />
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
     </Grid>
 </Window>

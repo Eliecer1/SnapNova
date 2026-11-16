@@ -14,15 +14,19 @@ public static class History
 
     public static event Action? Changed;
 
-    /// <summary>Guarda la captura en segundo plano (la imagen debe estar congelada).</summary>
-    public static void Add(BitmapSource image)
+    /// <summary>
+    /// Guarda la captura en segundo plano (la imagen debe estar congelada).
+    /// Devuelve la ruta donde quedará, para relacionarla con su miniatura en el editor.
+    /// </summary>
+    public static string Add(BitmapSource image)
     {
+        string folder = Folder;
+        string path = Path.Combine(folder, $"{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
         Task.Run(() =>
         {
             try
             {
-                Directory.CreateDirectory(Folder);
-                string path = Path.Combine(Folder, $"{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
+                Directory.CreateDirectory(folder);
                 Exporter.Save(image, path);
                 foreach (var old in Recent(int.MaxValue).Skip(MaxItems))
                 {
@@ -35,6 +39,7 @@ public static class History
                 // El historial es un extra: si falla (disco lleno, permisos) no interrumpe la captura.
             }
         });
+        return path;
     }
 
     public static List<string> Recent(int count)

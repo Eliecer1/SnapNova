@@ -74,6 +74,10 @@ Pruebas rápidas (sin las de desplazamiento): `SnapNova.exe --selftest salida --
 - Copiar texto e imágenes usa la API básica del portapapeles con reintentos: ya no falla cuando AnyViewer u otra app lo tiene abierto un instante.
 - `SnapNova.exe --copy imagen.png` copia una imagen al portapapeles desde la línea de comandos.
 
+## Novedades 1.2
+
+- **Un solo editor con bandeja** (como Snagit): las capturas nuevas llegan al editor ya abierto y abajo se ven las recientes. Clic en una miniatura para volver a ella; cada captura conserva sus anotaciones y su deshacer durante la sesión (punto azul = tiene cambios). Ctrl+← / Ctrl+→ para moverse.
+
 ## Desarrollo
 
 ```bash

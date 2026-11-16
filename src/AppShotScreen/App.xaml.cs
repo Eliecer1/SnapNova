@@ -400,7 +400,7 @@ public partial class App : Application
 
     private void HandleCapture(BitmapSource shot)
     {
-        History.Add(shot);
+        string historyPath = History.Add(shot);
         if (_settings.CopyToClipboardAfterCapture)
         {
             try { Exporter.CopyToClipboard(shot); } catch { /* portapapeles ocupado: no es crítico */ }
@@ -411,7 +411,8 @@ public partial class App : Application
             try { saved = _settings.NextFilePath(); Exporter.SavePng(shot, saved); }
             catch (Exception ex) { saved = null; ToastWindow.Show("No se pudo guardar la captura", ex.Message); }
         }
-        if (_settings.OpenEditorAfterCapture) OpenEditor(shot);
+        if (_settings.OpenEditorAfterCapture) OpenEditor(shot, historyPath);
+        else _editor?.AddCapture(shot, historyPath, activate: false); // si el editor ya está abierto, la deja en su bandeja
 
         // Sin editor, avisamos de lo que pasó con la captura para que no parezca que no hizo nada.
         if (saved != null && !_settings.OpenEditorAfterCapture)
@@ -421,12 +422,31 @@ public partial class App : Application
                 "Ábrela desde la ventana de inicio si quieres editarla.");
     }
 
-    private void OpenEditor(BitmapSource image)
+    /// <summary>El único editor (como Snagit): las capturas nuevas se suman a su bandeja.</summary>
+    private EditorWindow? _editor;
+
+    private void OpenEditor(BitmapSource image) => OpenEditor(image, null);
+
+    private void OpenEditor(BitmapSource image, string? historyPath)
     {
-        var editor = new EditorWindow(image, _settings);
-        editor.Show();
-        editor.Activate();
+        if (_editor == null)
+        {
+            _editor = new EditorWindow(image, _settings, historyPath);
+            _editor.Closed += (_, _) => _editor = null;
+            _editor.Show();
+        }
+        else
+        {
+            _editor.OpenOrSwitch(image, historyPath);
+            _editor.Show();
+            if (_editor.WindowState == WindowState.Minimized) _editor.WindowState = WindowState.Normal;
+        }
+        _editor.Activate();
     }
+
+    /// <summary>Para otras ventanas (p. ej. la captura fijada): abre la imagen en el editor único.</summary>
+    public static void ShowInEditor(BitmapSource image, string? historyPath = null) =>
+        ((App)Current).OpenEditor(image, historyPath);
 
     private void PickAndOpenImage()
     {
@@ -450,7 +470,7 @@ public partial class App : Application
             conv.CopyPixels(px, stride, 0);
             var img = BitmapSource.Create(conv.PixelWidth, conv.PixelHeight, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, px, stride);
             img.Freeze();
-            OpenEditor(img);
+            OpenEditor(img, path); // si ya está en la bandeja del editor, vuelve a ella en vez de duplicarla
         }
         catch (Exception ex)
         {

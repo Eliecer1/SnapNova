@@ -125,7 +125,7 @@ public sealed class PinWindow : Window
         }
         Item("Copiar", () => Exporter.CopyToClipboard(_image));
         Item("Guardar", () => { string p = _settings.NextFilePath(); Exporter.SavePng(_image, p); ToastWindow.Show("Captura guardada", System.IO.Path.GetFileName(p)); });
-        Item("Abrir en el editor", () => { new EditorWindow(_image, _settings).Show(); Close(); });
+        Item("Abrir en el editor", () => { App.ShowInEditor(_image); Close(); });
         menu.Items.Add(new Separator());
         Item("Tamaño real (100 %)", () => { _scale = 1; ApplyScale(); });
         Item("Opacidad 100 %", () => Opacity = 1);

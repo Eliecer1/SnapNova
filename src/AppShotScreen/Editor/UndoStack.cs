@@ -46,6 +46,18 @@ public sealed class UndoStack
         Changed?.Invoke();
     }
 
+    /// <summary>Estado guardado (en el editor con varias capturas, cada una tiene su propio deshacer).</summary>
+    public (IUndoAction[] Undo, IUndoAction[] Redo) Save() => (_undo.Reverse().ToArray(), _redo.Reverse().ToArray());
+
+    public void Restore((IUndoAction[] Undo, IUndoAction[] Redo) state)
+    {
+        _undo.Clear();
+        _redo.Clear();
+        foreach (var a in state.Undo) _undo.Push(a);
+        foreach (var a in state.Redo) _redo.Push(a);
+        Changed?.Invoke();
+    }
+
     public void Redo()
     {
         if (!CanRedo) return;
