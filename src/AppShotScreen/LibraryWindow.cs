@@ -54,7 +54,7 @@ public sealed class LibraryWindow : Window
             return b;
         }
         _open = Btn("Abrir", "IcoImage", OpenSelected, "Abre la captura en el editor (doble clic)");
-        _copy = Btn("Copiar", "IcoCopy", CopySelected, "Copia la captura al portapapeles");
+        _copy = Btn("Copiar", "IcoCopy", CopySelected, "Copia la captura al portapapeles (con sus anotaciones)");
         _combineV = Btn("Combinar ↓", null, () => CombineSelected(true), "Une las capturas marcadas una debajo de otra, en el orden en que las marcaste");
         _combineH = Btn("Combinar →", null, () => CombineSelected(false), "Une las capturas marcadas una al lado de otra");
         _delete = Btn("Eliminar", null, () => DeleteSelected(), "Elimina del historial las capturas marcadas (Supr)");
@@ -113,6 +113,8 @@ public sealed class LibraryWindow : Window
             {
                 try
                 {
+                    // Si la captura tiene anotaciones guardadas, se ve tal como quedó en el editor.
+                    if (EditStore.LoadThumb(file) is { } edited) return edited;
                     var bmp = new BitmapImage();
                     bmp.BeginInit();
                     bmp.CacheOption = BitmapCacheOption.OnLoad;
@@ -163,7 +165,47 @@ public sealed class LibraryWindow : Window
             if (e.ClickCount == 2) { _openFile(file); return; }
             Toggle(file);
         };
+        tile.ContextMenu = TileMenu(file);
         return tile;
+    }
+
+    /// <summary>Clic derecho en una captura: copiarla con sus anotaciones, abrirla o eliminarla.</summary>
+    private ContextMenu TileMenu(string file)
+    {
+        var menu = new ContextMenu();
+        void Item(string header, Action action, string? tip = null)
+        {
+            var mi = new MenuItem { Header = header, ToolTip = tip };
+            mi.Click += (_, _) => action();
+            menu.Items.Add(mi);
+        }
+        Item("Copiar con anotaciones", () => CopyFile(file, annotated: true), "Copia la captura tal como quedó en el editor");
+        Item("Copiar original", () => CopyFile(file, annotated: false), "Copia la captura sin anotaciones");
+        menu.Items.Add(new Separator());
+        Item("Abrir en el editor", () => _openFile(file));
+        Item("Eliminar", () =>
+        {
+            _selected.Clear();
+            _selected.Add(file);
+            DeleteSelected();
+        });
+        return menu;
+    }
+
+    internal static bool CopyFile(string file, bool annotated)
+    {
+        try
+        {
+            Exporter.CopyToClipboard(annotated ? EditStore.RenderEdited(file) : ImageTools.Load(file));
+            ToastWindow.Show(annotated && EditStore.Exists(file) ? "Captura copiada con sus anotaciones" : "Captura copiada al portapapeles");
+            return true;
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            ToastWindow.Show("No se pudo copiar", "Otra aplicación tiene ocupado el portapapeles. Inténtalo de nuevo.");
+        }
+        catch (Exception ex) { ToastWindow.Show("No se pudo copiar", ex.Message); }
+        return false;
     }
 
     internal void Toggle(string file)
@@ -203,12 +245,7 @@ public sealed class LibraryWindow : Window
     private void CopySelected()
     {
         if (_selected.Count != 1) return;
-        try
-        {
-            Exporter.CopyToClipboard(ImageTools.Load(_selected[0]));
-            ToastWindow.Show("Captura copiada al portapapeles");
-        }
-        catch (Exception ex) { ToastWindow.Show("No se pudo copiar", ex.Message); }
+        CopyFile(_selected[0], annotated: true);
     }
 
     /// <summary>Une las capturas marcadas (en el orden en que se marcaron) y abre el resultado en el editor.</summary>

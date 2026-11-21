@@ -149,6 +149,7 @@ internal static class SelfTest
             await SelfTestV1.RunAsync(outDir, Ok, Fail);
             await SelfTestTray.RunAsync(outDir, Ok, Fail);
             await SelfTestPersist.RunAsync(outDir, Ok, Fail);
+            await SelfTestAdjust.RunAsync(outDir, Ok, Fail);
             if (!fast) await SelfTestScroll.RunAsync(outDir, Ok, Fail);
         }
         catch (Exception ex)

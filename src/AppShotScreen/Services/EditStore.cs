@@ -192,6 +192,15 @@ public static class EditStore
         }
     }
 
+    /// <summary>La captura tal como quedó en el editor (con anotaciones y recortes), lista para copiar.</summary>
+    public static BitmapSource RenderEdited(string imagePath)
+    {
+        var original = ImageTools.Load(imagePath);
+        var saved = Load(imagePath);
+        if (saved == null) return original;
+        return Exporter.RenderComposite(saved.Base ?? original, saved.Annotations);
+    }
+
     public static BitmapSource? LoadThumb(string imagePath)
     {
         try

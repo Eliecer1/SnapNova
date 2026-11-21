@@ -10,6 +10,8 @@
         <!-- Ventana detectada bajo el cursor / región arrastrada -->
         <Rectangle x:Name="SelectionBorder" Stroke="#FF5B8CFF" StrokeThickness="2"
                    HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Collapsed" IsHitTestVisible="False" />
+        <!-- Tiradores para ajustar la región antes de confirmar (se crean en código) -->
+        <Canvas x:Name="Handles" IsHitTestVisible="False" Visibility="Collapsed" />
         <Line x:Name="CrossH" Stroke="#665B8CFF" StrokeThickness="1" IsHitTestVisible="False" />
         <Line x:Name="CrossV" Stroke="#665B8CFF" StrokeThickness="1" IsHitTestVisible="False" />
 
@@ -32,6 +34,31 @@
                     <TextBlock x:Name="LoupeCoords" DockPanel.Dock="Right" Foreground="#FF9BA1B5" FontSize="10.5" FontFamily="Consolas" VerticalAlignment="Center" />
                     <TextBlock x:Name="LoupeText" Foreground="White" FontSize="11" FontFamily="Consolas" />
                 </DockPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Barra para confirmar la región ajustada -->
+        <Border x:Name="AdjustBar" Background="#F51A1C23" CornerRadius="10" Padding="6" BorderBrush="#FF2C303C" BorderThickness="1"
+                HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Collapsed" Cursor="Arrow">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="AdjustSize" Foreground="#FF9BA1B5" FontSize="12" FontFamily="Consolas" VerticalAlignment="Center" Margin="8,0,10,0" />
+                <Border x:Name="ConfirmButton" Background="#FF5B8CFF" CornerRadius="7" Padding="12,6" Cursor="Hand"
+                        ToolTip="Capturar esta región (Enter o doble clic dentro)">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M4,12 L10,18 L20,6" Stroke="White" StrokeThickness="2.4" Width="14" Height="14" Stretch="Uniform"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" VerticalAlignment="Center" />
+                        <TextBlock Text="Capturar" Foreground="White" FontSize="13" FontWeight="SemiBold" Margin="7,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border x:Name="RedoButton" Background="#FF252833" CornerRadius="7" Padding="10,6" Margin="6,0,0,0" Cursor="Hand"
+                        ToolTip="Elegir otra región (clic derecho)">
+                    <TextBlock Text="Rehacer" Foreground="White" FontSize="13" VerticalAlignment="Center" />
+                </Border>
+                <Border x:Name="CancelButton" Background="#FF252833" CornerRadius="7" Padding="10,6" Margin="6,0,0,0" Cursor="Hand"
+                        ToolTip="Cancelar (Esc)">
+                    <Path Data="M5,5 L19,19 M19,5 L5,19" Stroke="White" StrokeThickness="2" Width="12" Height="12" Stretch="Uniform"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" VerticalAlignment="Center" />
+                </Border>
             </StackPanel>
         </Border>
 

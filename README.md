@@ -11,7 +11,7 @@ Instalador para Windows 10/11: [`descargas/SnapNova-1.0-instalador.zip`](descarg
 
 1. Ejecuta `dist\SnapNova.exe`. Aparece un icono azul en la bandeja del sistema, junto al reloj.
 2. Captura:
-   - **Impr Pant** o **Ctrl+Shift+S**: seleccionar región (arrastra; Enter = todo; Esc = cancelar)
+   - **Impr Pant** o **Ctrl+Shift+S**: seleccionar región (arrastra, ajusta con los tiradores y confirma con Enter; Enter sin región = todo; Esc = cancelar)
    - **Ctrl+Shift+F**: pantalla completa del monitor actual
    - **Ctrl+Shift+D**: captura con desplazamiento (como Snagit). Selecciona la zona; aparece un marco rojo y un panel flotante. Desplaza tú con la rueda del ratón (puedes subir y bajar) y pulsa **Detener y guardar** (o Esc). **Auto** desplaza solo hasta el final; **Cancelar** descarta.
    - Clic en el icono de la bandeja: región. Clic derecho: menú (retardo 3 s, abrir imagen, carpeta, salir)
@@ -41,7 +41,7 @@ Las capturas se guardan en `Imágenes\SnapNova`. Las preferencias están en `%AP
 ## Novedades 0.2
 
 - **Ventana de inicio** con los modos de captura y las capturas recientes (historial local en `%LOCALAPPDATA%\SnapNova\Historial`, últimas 60). Clic en el icono de la bandeja para abrirla. Con `--tray` arranca solo en la bandeja.
-- **Captura inteligente**: al pasar el ratón se resalta la ventana y un clic la captura; arrastrar sigue eligiendo una región. Lupa con coordenadas y color; **C** copia el color (#RRGGBB).
+- **Captura inteligente**: al pasar el ratón se resalta la ventana y un clic la elige; arrastrar sigue eligiendo una región. Lupa con coordenadas y color; **C** copia el color (#RRGGBB).
 - **Presentación**: fondo degradado, margen, esquinas redondeadas, sombra y borde (panel derecho del editor). La captura se copia píxel a píxel.
 - **Ocultar datos sensibles**: detecta con OCR correos, teléfonos, tarjetas, IPs e identificaciones y los pixela.
 - **Fijar en pantalla** (Ctrl+Alt+P o botón Fijar): la captura flota encima; arrastrar la mueve, la rueda cambia el tamaño, doble clic la cierra y el clic derecho abre el menú.
@@ -81,6 +81,11 @@ Pruebas rápidas (sin las de desplazamiento): `SnapNova.exe --selftest salida --
 ## Novedades 1.3
 
 - **Las anotaciones se guardan entre sesiones** (como Snagit): al reabrir una captura desde la bandeja, la Biblioteca o Recientes aparecen sus flechas, textos, pasos, pixelados, foco y recortes, y se pueden seguir editando. La imagen original no se modifica; las ediciones van en `%LOCALAPPDATA%\SnapNova\Historial\ediciones`.
+
+## Novedades 1.4
+
+- **Ajustar la región antes de capturar**: al soltar el ratón (o al hacer clic en una ventana) la región queda marcada con tiradores en las esquinas y los lados. Arrastra un tirador para agrandarla o achicarla, arrastra por dentro para moverla, o usa las flechas (Mayús = 10 px; Ctrl + flechas cambia el tamaño). Confirma con **Capturar**, **Enter** o doble clic dentro; **Rehacer** o clic derecho para elegir otra; **Esc** cancela.
+- **Copiar con anotaciones desde el menú contextual**: clic derecho en una miniatura de la bandeja del editor o en una captura de la Biblioteca → *Copiar con anotaciones* (tal como se ve, sin abrirla) o *Copiar original*. El botón Copiar de la Biblioteca también copia con las anotaciones, y sus miniaturas muestran las ediciones guardadas.
 
 ## Desarrollo
 

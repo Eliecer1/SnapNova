@@ -66,6 +66,42 @@ public static class Exporter
     }
 
     /// <summary>
+    /// Dibuja una captura con sus anotaciones sin abrir el editor (por ejemplo, para copiarla desde
+    /// la bandeja o la Biblioteca). Las anotaciones se colocan en un lienzo temporal igual al del editor
+    /// y al terminar se sueltan, así pueden volver a usarse.
+    /// </summary>
+    public static BitmapSource RenderComposite(BitmapSource baseImage, IReadOnlyList<UIElement> annotations)
+    {
+        if (annotations.Count == 0) return baseImage;
+        int w = baseImage.PixelWidth, h = baseImage.PixelHeight;
+        var canvas = new Canvas { Width = w, Height = h, Background = Brushes.White, ClipToBounds = true };
+        var img = new Image { Source = baseImage, Width = w, Height = h, Stretch = Stretch.Fill };
+        RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.NearestNeighbor);
+        canvas.Children.Add(img);
+        var added = new List<UIElement>();
+        try
+        {
+            foreach (var a in annotations)
+            {
+                if (a is FrameworkElement { Parent: Panel p }) p.Children.Remove(a);
+                canvas.Children.Add(a);
+                added.Add(a);
+            }
+            canvas.Measure(new Size(w, h));
+            canvas.Arrange(new Rect(0, 0, w, h));
+            canvas.UpdateLayout();
+            var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(canvas);
+            rtb.Freeze();
+            return rtb;
+        }
+        finally
+        {
+            foreach (var a in added) canvas.Children.Remove(a);
+        }
+    }
+
+    /// <summary>
     /// Compone la imagen final. Todo va en coordenadas enteras: la captura se copia píxel a píxel,
     /// sin re-muestrear (solo se recortan las esquinas si hay radio).
     /// </summary>

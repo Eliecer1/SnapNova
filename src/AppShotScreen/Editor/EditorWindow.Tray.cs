@@ -211,10 +211,57 @@ public partial class EditorWindow
         tile.MouseEnter += (_, _) => { if (d != _current) tile.Background = (Brush)FindResource("Bg2"); };
         tile.MouseLeave += (_, _) => { if (d != _current) tile.Background = Brushes.Transparent; };
         tile.MouseLeftButtonUp += (_, _) => SwitchTo(d);
+        tile.ContextMenu = BuildTileMenu(d);
         d.Tile = tile;
         RefreshTile(d);
         return tile;
     }
+
+    /// <summary>Clic derecho en una miniatura: copiarla (con sus anotaciones) sin tener que abrirla.</summary>
+    private ContextMenu BuildTileMenu(TrayDoc d)
+    {
+        var menu = new ContextMenu();
+        void Item(string header, Action action, string? tip = null)
+        {
+            var mi = new MenuItem { Header = header, ToolTip = tip };
+            mi.Click += (_, _) => action();
+            menu.Items.Add(mi);
+        }
+        Item("Copiar con anotaciones", () => CopyDoc(d, annotated: true), "Copia la captura tal como se ve, con flechas, textos y demás");
+        Item("Copiar original", () => CopyDoc(d, annotated: false), "Copia la captura sin anotaciones");
+        menu.Items.Add(new Separator());
+        Item("Abrir", () => SwitchTo(d));
+        menu.Opened += (_, _) => ((MenuItem)menu.Items[1]).IsEnabled = d.FilePath != null || d.Original != null;
+        return menu;
+    }
+
+    internal void CopyDoc(TrayDoc d, bool annotated)
+    {
+        try
+        {
+            Exporter.CopyToClipboard(annotated ? RenderDoc(d) : d.Original ?? ImageTools.Load(d.FilePath!));
+            Flash(annotated ? "Copiada al portapapeles con sus anotaciones" : "Captura original copiada al portapapeles");
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            Flash("Otra aplicación tiene ocupado el portapapeles. Inténtalo de nuevo.");
+        }
+        catch (Exception ex)
+        {
+            Flash($"No se pudo copiar: {ex.Message}");
+        }
+    }
+
+    /// <summary>Imagen de una captura de la bandeja con sus anotaciones (la abierta, en memoria o guardada en disco).</summary>
+    internal BitmapSource RenderDoc(TrayDoc d)
+    {
+        if (d == _current) return RenderAnnotated();
+        if (d.Image != null) return Exporter.RenderComposite(d.Image, d.Annotations);
+        if (d.FilePath == null) throw new FileNotFoundException();
+        return EditStore.RenderEdited(d.FilePath);
+    }
+
+    internal TrayDoc DocAt(int i) => _docs[i];
 
     /// <summary>Actualiza la miniatura (con las anotaciones si es la captura abierta).</summary>
     private void RefreshTile(TrayDoc d)

@@ -37,7 +37,7 @@ internal static class SelfTestFeatures
     }
 
     /// <summary>Guarda cómo se ve un elemento (para revisar el diseño).</summary>
-    private static void Snap(FrameworkElement el, string path)
+    internal static void Snap(FrameworkElement el, string path)
     {
         el.UpdateLayout();
         int w = (int)Math.Ceiling(el.ActualWidth), h = (int)Math.Ceiling(el.ActualHeight);
